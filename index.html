@@ -611,9 +611,20 @@
             });
         }
 
-        // --- Audio/Visual ---
+        // --- Audio/Visual & Notifications ---
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        window.addEventListener('mousedown', initAudio, { once: true });
+        window.addEventListener('touchstart', initAudio, { once: true });
+        window.addEventListener('keydown', initAudio, { once: true });
+
         function playPingSound() {
-            const ctx = new AudioContext();
+            initAudio();
+            const ctx = audioCtx;
+            if (!ctx) return;
             const playNote = (freq, start, duration) => {
                 const osc = ctx.createOscillator(); const gain = ctx.createGain();
                 osc.type = 'sine'; osc.frequency.setValueAtTime(freq, start);
@@ -621,14 +632,38 @@
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.start(start); osc.stop(start + duration);
             };
-            playNote(880, ctx.currentTime, 0.2); playNote(1046, ctx.currentTime + 0.1, 0.3);
+            playNote(880, ctx.currentTime, 0.2);
+            playNote(1046, ctx.currentTime + 0.1, 0.3);
         }
 
+        let lastPing = { from: "", count: 0, el: null };
         function handlePing(from) {
             document.getElementById('appShell').classList.add('shake');
             setTimeout(() => document.getElementById('appShell').classList.remove('shake'), 400);
             playPingSound();
-            addSystemMsg(`🔔 URGENT PING FROM ${from}`);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+            if (lastPing.from === from && lastPing.el && lastPing.el.parentElement) {
+                lastPing.count++;
+                lastPing.el.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 [${lastPing.count}x] PING RECEIVED FROM ${from}!</div>`;
+            } else {
+                lastPing = { from: from, count: 1, el: null };
+                const d = document.createElement('div');
+                d.className = `msg alert`;
+                d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 PING RECEIVED FROM ${from}!</div>`;
+                document.getElementById('messages').appendChild(d);
+                lastPing.el = d;
+            }
+            document.getElementById('messages').scrollTop = 99999;
+        }
+
+        function pingUser(id) {
+            const c = connections.get(id);
+            if (c && c.open) {
+                const myName = document.getElementById('userName').value;
+                c.send({ type: 'ping', name: myName });
+                addSystemMsg(`DIRECT PING SENT TO ${c.remoteName || id.split('-').pop()}`);
+            }
         }
 
         function pingAll() {
@@ -659,6 +694,7 @@
                         <div style="font-size:0.85rem; font-weight:bold;">${uName}</div>
                         <div style="font-size:0.65rem; color:var(--success);">Online</div>
                     </div>
+                    <button class="btn-primary" style="font-size:0.6rem; padding:6px 12px; border-radius:8px;" onclick="pingUser('${id}')">PING 🔔</button>
                 `;
                 l.appendChild(d);
             });
@@ -666,6 +702,7 @@
         }
 
         function addChatMsg(s, t, cl, id, fileData = null) {
+            lastPing = { from: "", count: 0, el: null };
             const d = document.createElement('div');
             d.className = `msg ${cl}`; d.setAttribute('data-id', id || 'sys');
             const avatarHtml = `<div class="peer-avatar" style="width:18px; height:18px; font-size:0.6rem; margin-right:6px; display:inline-flex; background:${getColor(s)}">${s.charAt(0).toUpperCase()}</div>`;
@@ -688,6 +725,7 @@
         }
 
         function addSystemMsg(t) {
+            lastPing = { from: "", count: 0, el: null };
             const d = document.createElement('div');
             d.style.textAlign = 'center'; d.style.fontSize = '0.7rem'; d.style.color = 'var(--text-muted)';
             d.style.margin = '10px 0'; d.innerText = `— ${t} —`;
@@ -696,6 +734,7 @@
         }
 
         init();
+        setTimeout(() => addSystemMsg("Tap anywhere to enable sound alerts"), 1000);
         function openOfflineSub() { window.open(`https://ntfy.sh/antigravity_p2p_${myShortId}`, '_blank'); }
     </script>
 </body>
