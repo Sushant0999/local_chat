@@ -3,12 +3,13 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antigravity P2P | Total Network Alert</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Antigravity P2P | Advanced Network Mesh</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
             --primary: #6366f1;
+            --primary-hover: #4f46e5;
             --bg: #0b0f1a;
             --card: rgba(22, 28, 45, 0.95);
             --text: #f8fafc;
@@ -23,13 +24,15 @@
             margin: 0;
             padding: 0;
             font-family: 'Inter', system-ui, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             background-color: var(--bg);
-            background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
+            background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.2) 0px, transparent 50%);
             color: var(--text);
             height: 100vh;
+            height: 100dvh;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -37,27 +40,89 @@
             padding: 20px;
         }
 
-        .app-shell {
+        .container {
             width: 100%;
-            max-width: 1000px;
+            max-width: 1100px;
             height: 90vh;
             background: var(--card);
-            backdrop-filter: blur(30px);
+            backdrop-filter: blur(40px);
             border: 1px solid var(--border);
             border-radius: 32px;
             display: grid;
-            grid-template-columns: 320px 1fr;
+            grid-template-columns: 350px 1fr;
             overflow: hidden;
-            box-shadow: 0 40px 120px -20px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
         }
 
-        /* Sidebar */
+        /* Responsive Breakpoint */
+        @media (max-width: 900px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                grid-template-columns: 1fr;
+                height: 100%;
+                border-radius: 0;
+                border: none;
+                grid-template-rows: auto 1fr;
+            }
+
+            .sidebar {
+                border-right: none !important;
+                border-bottom: 1px solid var(--border);
+                padding: 16px !important;
+                flex-direction: row !important;
+                overflow-x: auto;
+                gap: 16px !important;
+            }
+
+            .sidebar-hide-mobile {
+                display: none !important;
+            }
+
+            .status-card {
+                flex-shrink: 0;
+                width: 200px;
+                padding: 12px !important;
+            }
+
+            .peer-list {
+                flex: none !important;
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 8px;
+            }
+
+            .peer-card {
+                flex-shrink: 0;
+                margin-bottom: 0 !important;
+                min-width: 140px;
+            }
+
+            .btn-warning-mobile {
+                width: auto !important;
+                padding: 10px 16px !important;
+            }
+
+            .input-bar {
+                padding: 12px 16px env(safe-area-inset-bottom, 12px) !important;
+                gap: 8px !important;
+            }
+
+            .input-bar button {
+                padding: 12px 16px !important;
+            }
+        }
+
+        /* Sidebar & Radar */
         .sidebar {
             padding: 32px;
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 24px;
+            background: rgba(0, 0, 0, 0.2);
         }
 
         .status-card {
@@ -70,7 +135,45 @@
 
         .status-card h2 {
             font-size: 1rem;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
+        }
+
+        .status-card p {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        .radar-box {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radar-line {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: conic-gradient(from 0deg, transparent, rgba(99, 102, 241, 0.4));
+            border-radius: 50%;
+            animation: rotate 3s linear infinite;
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .peer-list {
@@ -86,6 +189,13 @@
             border-radius: 16px;
             background: rgba(255, 255, 255, 0.03);
             margin-bottom: 8px;
+            border: 1px solid transparent;
+            transition: 0.2s;
+        }
+
+        .peer-card.active {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
         }
 
         .peer-avatar {
@@ -100,11 +210,11 @@
             font-size: 0.8rem;
         }
 
-        /* Main Area */
-        .main-chat {
+        /* Main Chat Area */
+        .chat-area {
             display: flex;
             flex-direction: column;
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.1);
         }
 
         .header {
@@ -118,7 +228,7 @@
         #messages {
             flex: 1;
             overflow-y: auto;
-            padding: 32px;
+            padding: 24px 32px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -128,19 +238,21 @@
             max-width: 80%;
             padding: 12px 18px;
             border-radius: 20px;
-            font-size: 0.95rem;
             line-height: 1.5;
+            font-size: 0.95rem;
         }
 
         .msg.sent {
             align-self: flex-end;
             background: var(--primary);
+            border-bottom-right-radius: 4px;
         }
 
         .msg.received {
             align-self: flex-start;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
         }
 
         .msg.alert {
@@ -153,16 +265,24 @@
             border-radius: 12px;
         }
 
-        /* Buttons & Inputs */
+        /* Inputs */
+        .input-bar {
+            padding: 24px 32px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 16px;
+        }
+
         input {
-            width: 100%;
+            flex: 1;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 12px 18px;
+            border-radius: 16px;
+            padding: 14px 20px;
             color: white;
             outline: none;
             transition: 0.2s;
+            font-size: 16px;
         }
 
         input:focus {
@@ -170,7 +290,7 @@
         }
 
         button {
-            padding: 14px 20px;
+            padding: 12px 20px;
             border-radius: 14px;
             border: none;
             font-weight: bold;
@@ -190,16 +310,8 @@
         }
 
         .btn-warning:hover {
-            transform: scale(1.02);
-            box-shadow: 0 0 20px rgba(234, 179, 8, 0.4);
-        }
-
-        .offline-box {
-            background: rgba(234, 179, 8, 0.1);
-            border: 1px dashed var(--warning);
-            padding: 15px;
-            border-radius: 15px;
-            text-align: center;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(234, 179, 8, 0.3);
         }
 
         .shake {
@@ -226,63 +338,69 @@
 
 <body>
 
-    <div class="app-shell" id="appShell">
+    <div class="container" id="appShell">
+        <!-- Sidebar: Discovery -->
         <div class="sidebar">
             <div class="status-card">
-                <h2>Network Lobby</h2>
-                <p id="ipLabel" style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace;">Discovering
-                    IP...</p>
+                <h2 id="meshCount">Network Mesh</h2>
+                <p id="ipTag">Identifying...</p>
             </div>
 
-            <div class="offline-box">
-                <div style="font-size: 0.75rem; color: var(--warning); font-weight: bold; margin-bottom: 8px;">OFFLINE
-                    ALERTS</div>
-                <p style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 12px;">Get pings even when this
-                    tab is closed.</p>
-                <button class="btn-primary" style="font-size: 0.7rem; padding: 8px 12px; width: 100%;"
-                    onclick="openOfflineSub()">
-                    Enable Offline Alerts
-                </button>
+            <div class="radar-box sidebar-hide-mobile">
+                <div class="radar-line"></div>
+                <div
+                    style="z-index:10; font-size:0.65rem; font-weight:bold; background:rgba(0,0,0,0.5); padding:4px 8px; border-radius:99px;">
+                    SCANNING...</div>
             </div>
 
             <div class="peer-list">
-                <label
-                    style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; display: block;">Nearby
-                    Devices</label>
-                <div id="peerItems">
-                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">
-                        Searching...</div>
+                <label class="sidebar-hide-mobile"
+                    style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; display: block;">Nearby
+                    Peers</label>
+                <div id="peerStack" style="display:contents">
+                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Waiting...
+                    </div>
                 </div>
             </div>
 
-            <button class="btn-warning" style="width: 100%;" onclick="pingEverywhere()">
-                📢 GLOBAL PING (PUSH)
+            <button class="btn-warning btn-warning-mobile" onclick="pingAll()">
+                📢 GLOBAL PING
             </button>
+
+            <div class="sidebar-hide-mobile" style="padding-top:10px; border-top:1px solid var(--border);">
+                <button class="btn-primary" style="width:100%; font-size:0.75rem" onclick="openOfflineSub()">Enable
+                    Offline Pings</button>
+            </div>
         </div>
 
-        <div class="main-chat">
+        <!-- Main: Chat -->
+        <div class="chat-area">
             <div class="header">
                 <div>
-                    <h3 id="meshTitle">Network Mesh</h3>
-                    <div style="font-size: 0.7rem; color: var(--success); margin-top: 4px;">• Discovery Running</div>
+                    <h3 id="lobbyName">Global Lobby</h3>
+                    <div id="statusDot" style="font-size: 0.7rem; color: var(--success); margin-top: 4px;">• Mesh
+                        Discovery On</div>
                 </div>
-                <input type="text" id="userName" value="User" placeholder="Your Name"
-                    style="max-width:120px; font-size:0.8rem; background: transparent; border-radius: 0; border-bottom: 1px solid var(--border);">
+                <div style="display:flex; align-items:center; gap:10px">
+                    <span style="font-size:0.75rem; color:var(--text-muted)">Me:</span>
+                    <input type="text" id="userName" value="User"
+                        onchange="localStorage.setItem('chatName', this.value)"
+                        style="width:100px; padding:6px 12px; font-size:0.8rem; border-radius:10px; flex:none;">
+                </div>
             </div>
 
             <div id="messages">
                 <div class="msg received">
                     <div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">System</div>
-                    <b>Status: Total Discovery Active.</b><br>
-                    To ping someone who doesn't have the page open, ask them to click <b>"Enable Offline Alerts"</b> in
-                    the sidebar first.
+                    <b>Radar Discovery is active.</b> Everyone on your local WiFi will appear in the sidebar
+                    automatically.
                 </div>
             </div>
 
-            <div style="padding: 24px 32px; border-top: 1px solid var(--border); display: flex; gap: 16px;">
-                <input type="text" id="chatInput" placeholder="Message the mesh..."
-                    onkeypress="if(event.key==='Enter') sendBroadcast()">
-                <button class="btn-primary" onclick="sendBroadcast()">Send</button>
+            <div class="input-bar">
+                <input type="text" id="chatInput" placeholder="Message the network..."
+                    onkeypress="if(event.key==='Enter') sendAll()">
+                <button class="btn-primary" onclick="sendAll()">Send</button>
             </div>
         </div>
     </div>
@@ -290,39 +408,58 @@
     <script>
         let peer;
         let connections = new Map();
-        let myIP = "";
         let myShortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+        let myIP = "";
         let ntfyTopic = "";
+        const APP_KEY = "ANTIGRAVITY_V1_"; // UNIQUE PREFIX FOR GLOBAL P2P PROTECTION
+
+        if (localStorage.getItem('chatName')) document.getElementById('userName').value = localStorage.getItem('chatName');
 
         async function init() {
             try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                myIP = data.ip;
-                // Topic is based on IP so only people on your WiFi get the same alerts
-                ntfyTopic = "antigravity_p2p_" + btoa(myIP).substring(0, 16).toLowerCase();
-                document.getElementById('ipLabel').innerText = `Hub: ${myIP}`;
+                // Try to get Public IP (Grouping Key)
+                const res = await fetch('https://api.ipify.org?format=json').catch(() => null);
+                const data = res ? await res.json() : null;
 
-                const myId = `NODE-${myIP.replace(/\./g, '-')}-${myShortId}`;
-                peer = new Peer(myId, { debug: 1 });
+                if (data && data.ip) {
+                    myIP = data.ip;
+                    document.getElementById('ipTag').innerText = `Hub: ${myIP}`;
+                    startP2P(myIP.replace(/\./g, '-'));
+                } else {
+                    // Fallback: If IP is blocked, ask user for a Room Name or use a default
+                    document.getElementById('ipTag').innerText = "IP Blocked. Use Secret Room ->";
+                    const secret = prompt("Public IP discovery was blocked. Enter a 'Secret Room Name' to find your friends:", "PrivateRoom123");
+                    if (secret) startP2P(btoa(secret).substring(0, 8));
+                }
+            } catch (err) { console.error("Init Error:", err); }
+        }
 
-                peer.on('open', (id) => {
-                    // Start discovery scans
-                    for (let i = 1; i <= 5; i++) {
-                        const lobbyId = `LOBBY-${myIP.replace(/\./g, '-')}-${i}`;
-                        const probe = new Peer(lobbyId, { debug: 0 });
-                        probe.on('open', () => {
-                            probe.on('connection', c => { setupConn(c); relay(c.peer); });
-                        });
-                        probe.on('error', e => {
-                            if (e.type === 'unavailable-id') setupConn(peer.connect(lobbyId));
-                        });
-                    }
-                });
+        function startP2P(networkKey) {
+            ntfyTopic = "antigravity_p2p_" + networkKey.substring(0, 16).toLowerCase();
+            const myId = `${APP_KEY}NODE-${networkKey}-${myShortId}`;
 
-                peer.on('connection', c => setupConn(c));
+            // PeerJS config for Secure Vercel Environment
+            peer = new Peer(myId, {
+                debug: 1,
+                secure: true,
+                config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
+            });
 
-            } catch (err) { console.error(err); }
+            peer.on('open', (id) => {
+                // Probe slots with UNIQUE APP KEY
+                for (let i = 1; i <= 3; i++) {
+                    const lobbyId = `${APP_KEY}LOBBY-${networkKey}-${i}`;
+                    const probe = new Peer(lobbyId, { debug: 0, secure: true });
+                    probe.on('open', () => {
+                        probe.on('connection', c => { setupConn(c); relay(c.peer); });
+                    });
+                    probe.on('error', e => {
+                        if (e.type === 'unavailable-id') setupConn(peer.connect(lobbyId));
+                    });
+                }
+            });
+
+            peer.on('connection', c => setupConn(c));
         }
 
         function setupConn(c) {
@@ -347,38 +484,18 @@
             connections.forEach(c => { if (c.open && c.peer !== newId) c.send({ type: 'mesh', id: newId }); });
         }
 
-        /**
-         * THE "OFFLINE" MAGIC
-         * This sends a POST request to ntfy.sh.
-         * Anyone who "subscribed" will get a system notification even if the tab is closed.
-         */
-        function pingEverywhere() {
+        function pingAll() {
             const name = document.getElementById('userName').value;
-
-            // 1. Direct P2P Ping (for those with tab open)
             connections.forEach(c => { if (c.open) c.send({ type: 'ping', name: name }); });
-
-            // 2. Cloud Offline Ping (for those with tab closed)
-            fetch(`https://ntfy.sh/${ntfyTopic}`, {
-                method: 'POST',
-                body: `${name} is calling you on the P2P Mesh!`,
-                headers: { 'Title': 'Direct Network Alert' }
-            });
-
-            addSystemMsg("GLOBAL BROADCAST SENT (OFFLINE + ONLINE)");
-        }
-
-        function openOfflineSub() {
-            // Open ntfy.sh subscription page in a small window
-            // In a real app, we'd use Web Push, but this is the no-server equivalent.
-            window.open(`https://ntfy.sh/${ntfyTopic}`, '_blank', 'width=500,height=700');
+            fetch(`https://ntfy.sh/${ntfyTopic}`, { method: 'POST', body: `${name} is pinging the Mesh!`, headers: { 'Title': 'Direct Network Alert' } });
+            addSystemMsg("GLOBAL BROADCAST SENT");
         }
 
         function handlePing(from) {
             document.getElementById('appShell').classList.add('shake');
             setTimeout(() => document.getElementById('appShell').classList.remove('shake'), 400);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
 
-            // Audio cue
             const ctx = new AudioContext();
             const osc = ctx.createOscillator();
             osc.connect(ctx.destination);
@@ -388,7 +505,7 @@
             addChatMsg("SYSTEM", `🔔 PING RECEIVED FROM ${from}!`, 'alert');
         }
 
-        function sendBroadcast() {
+        function sendAll() {
             const i = document.getElementById('chatInput');
             const t = i.value.trim();
             if (!t) return;
@@ -396,37 +513,25 @@
             connections.forEach(c => { if (c.open) c.send(p); });
             addChatMsg("You", t, 'sent');
             i.value = "";
+            i.blur();
         }
 
+        function openOfflineSub() { window.open(`https://ntfy.sh/${ntfyTopic}`, '_blank'); }
+
         function updateUI() {
-            const l = document.getElementById('peerItems');
+            const l = document.getElementById('peerStack');
             l.innerHTML = "";
-            let actualUserCount = 0;
-
+            let count = 0;
             connections.forEach((c, id) => {
-                // Filter: Only show and count actual User Nodes (NODE-...)
                 if (!id.startsWith('NODE-')) return;
-
-                actualUserCount++;
+                count++;
                 const sid = id.split('-').pop();
                 const d = document.createElement('div');
                 d.className = 'peer-card';
-                d.innerHTML = `
-                    <div class="peer-avatar">${(c.remoteName || sid).charAt(0).toUpperCase()}</div>
-                    <div style="flex:1">
-                        <div style="font-size:0.85rem; font-weight:bold;">${c.remoteName || 'Device ' + sid}</div>
-                        <div style="font-size:0.65rem; color:var(--success);">Mesh Active</div>
-                    </div>
-                `;
+                d.innerHTML = `<div class="peer-avatar">${(c.remoteName || sid).charAt(0).toUpperCase()}</div><div style="flex:1"><div style="font-size:0.85rem; font-weight:bold;">${c.remoteName || 'Dev ' + sid}</div><div style="font-size:0.65rem; color:var(--success);">Active</div></div>`;
                 l.appendChild(d);
             });
-
-            // Update Header with ACTUAL human device count
-            document.getElementById('meshTitle').innerText = `Active Mesh (${actualUserCount} Devies)`;
-
-            if (actualUserCount > 0) {
-                document.getElementById('nodeStatus').innerHTML = `• ${actualUserCount + 1} Total Nodes Syncing`;
-            }
+            document.getElementById('meshCount').innerText = `Mesh (${count} Online)`;
         }
 
         function addChatMsg(s, t, cl) {
@@ -440,7 +545,7 @@
         function addSystemMsg(t) {
             const d = document.createElement('div');
             d.style.textAlign = 'center'; d.style.fontSize = '0.7rem'; d.style.color = 'var(--text-muted)';
-            d.style.margin = '15px 0'; d.innerText = `— ${t} —`;
+            d.style.margin = '10px 0'; d.innerText = `— ${t} —`;
             document.getElementById('messages').appendChild(d);
             document.getElementById('messages').scrollTop = 99999;
         }
