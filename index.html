@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Antigravity P2P | Network Mesh</title>
+    <title>Antigravity P2P | Modern Mesh</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -54,7 +54,6 @@
             box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
         }
 
-        /* Responsive Breakpoint */
         @media (max-width: 900px) {
             body {
                 padding: 0;
@@ -100,22 +99,12 @@
                 min-width: 140px;
             }
 
-            .btn-warning-mobile {
-                width: auto !important;
-                padding: 10px 16px !important;
-            }
-
             .input-bar {
                 padding: 12px 16px env(safe-area-inset-bottom, 12px) !important;
                 gap: 8px !important;
             }
-
-            .input-bar button {
-                padding: 12px 16px !important;
-            }
         }
 
-        /* Sidebar & Radar */
         .sidebar {
             padding: 32px;
             border-right: 1px solid var(--border);
@@ -188,14 +177,10 @@
             padding: 12px;
             border-radius: 16px;
             background: rgba(255, 255, 255, 0.03);
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             border: 1px solid transparent;
             transition: 0.2s;
-        }
-
-        .peer-card.active {
-            border-color: var(--primary);
-            background: rgba(99, 102, 241, 0.05);
+            position: relative;
         }
 
         .peer-avatar {
@@ -208,9 +193,9 @@
             justify-content: center;
             font-weight: bold;
             font-size: 0.8rem;
+            flex-shrink: 0;
         }
 
-        /* Main Chat Area */
         .chat-area {
             display: flex;
             flex-direction: column;
@@ -220,11 +205,12 @@
         }
 
         .header {
-            padding: 24px 32px;
+            padding: 20px 32px;
             border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
         }
 
         #messages {
@@ -233,11 +219,10 @@
             padding: 24px 32px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            min-height: 0;
-            /* Ensures container doesn't expand past parent */
+            gap: 16px;
             scrollbar-width: thin;
             scrollbar-color: var(--primary) transparent;
+            min-height: 0;
         }
 
         #messages::-webkit-scrollbar {
@@ -255,6 +240,13 @@
             border-radius: 20px;
             line-height: 1.5;
             font-size: 0.95rem;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .msg:hover {
+            transform: translateY(-2px);
         }
 
         .msg.sent {
@@ -280,17 +272,74 @@
             border-radius: 12px;
         }
 
-        /* Inputs */
-        .input-bar {
-            padding: 24px 32px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 16px;
+        .file-preview {
+            margin-top: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
             background: rgba(0, 0, 0, 0.2);
-            flex-shrink: 0;
+            max-width: 280px;
         }
 
-        input {
+        .file-preview img {
+            width: 100%;
+            display: block;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .file-preview img:hover {
+            filter: brightness(1.1);
+        }
+
+        .reactions {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .reaction-chip {
+            padding: 2px 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .reaction-chip:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.1);
+        }
+
+        .typing-indicator {
+            font-size: 0.7rem;
+            color: var(--primary);
+            font-style: italic;
+            opacity: 0;
+            transition: 0.3s;
+            height: 14px;
+            overflow: hidden;
+        }
+
+        .typing-indicator.active {
+            opacity: 1;
+            margin-bottom: 8px;
+        }
+
+        .input-bar {
+            padding: 20px 32px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+            align-items: center;
+        }
+
+        input[type="text"] {
             flex: 1;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border);
@@ -302,8 +351,9 @@
             font-size: 16px;
         }
 
-        input:focus {
+        input[type="text"]:focus {
             border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
         }
 
         button {
@@ -314,6 +364,10 @@
             cursor: pointer;
             transition: 0.2s;
             white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .btn-primary {
@@ -321,14 +375,14 @@
             color: white;
         }
 
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
         .btn-warning {
             background: var(--warning);
             color: black;
-        }
-
-        .btn-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(234, 179, 8, 0.3);
         }
 
         .shake {
@@ -358,77 +412,79 @@
     <div class="container" id="appShell">
         <div class="sidebar">
             <div class="status-card">
-                <h2 id="meshCount">Network Mesh</h2>
+                <h2 id="meshCount">0 Peers Online</h2>
                 <p id="ipTag">Connecting...</p>
             </div>
-
             <div class="radar-box sidebar-hide-mobile">
                 <div class="radar-line"></div>
                 <div
                     style="z-index:10; font-size:0.65rem; font-weight:bold; background:rgba(0,0,0,0.5); padding:4px 8px; border-radius:99px;">
-                    RADAR ACTIVE</div>
+                    MESH ACTIVE</div>
             </div>
-
             <div class="peer-list">
                 <label class="sidebar-hide-mobile"
                     style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; display: block;">Nearby
                     Peers</label>
                 <div id="peerStack" style="display:contents">
-                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Searching
+                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Scanning
                         network...</div>
                 </div>
             </div>
-
-            <button class="btn-warning btn-warning-mobile" onclick="pingAll()">📢 GLOBAL PING</button>
-            <div class="sidebar-hide-mobile" style="padding-top:10px; border-top:1px solid var(--border);">
-                <button class="btn-primary" style="width:100%; font-size:0.75rem" onclick="openOfflineSub()">Offline
-                    Alerts</button>
-            </div>
+            <button class="btn-warning" onclick="pingAll()" style="width:100%">📢 GLOBAL PING</button>
+            <button class="btn-primary" style="width:100%; font-size:0.75rem" onclick="openOfflineSub()">Offline
+                Alerts</button>
         </div>
 
         <div class="chat-area">
             <div class="header">
                 <div>
-                    <h3 id="lobbyName">P2P Lobby</h3>
-                    <div id="statusDot" style="font-size: 0.7rem; color: var(--success); margin-top: 4px;">• Mesh
-                        Discovery On</div>
+                    <h3 id="lobbyName">P2P Secure Mesh</h3>
+                    <div style="font-size: 0.7rem; color: var(--success); margin-top: 4px;">• Encryption: WebRTC / TLS
+                    </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:10px">
+                <div style="display:flex; align-items:center; gap:12px">
+                    <button class="btn-primary" style="font-size:0.7rem; padding:8px 14px;"
+                        onclick="exportChat()">Export History</button>
                     <span style="font-size:0.75rem; color:var(--text-muted)">Me:</span>
-                    <input type="text" id="userName" placeholder="Set Name"
+                    <input type="text" id="userName" placeholder="Nick"
                         onchange="localStorage.setItem('chatName', this.value)"
-                        style="width:100px; padding:6px 12px; font-size:0.8rem; border-radius:10px; flex:none;">
+                        style="width:100px; padding:8px 12px; font-size:0.8rem; border-radius:12px; flex:none;">
                 </div>
             </div>
 
             <div id="messages">
                 <div class="msg received">
                     <div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">System</div>
-                    <b>Auto-Discovery Active.</b> Devices on your network will appear automatically.
+                    <b>Enterprise Features Activated.</b> File sharing, reactions, and history export are now live in
+                    this mesh.
                 </div>
             </div>
 
+            <div style="padding: 0 32px">
+                <div id="typingArea" class="typing-indicator"></div>
+            </div>
+
             <div class="input-bar">
-                <input type="text" id="chatInput" placeholder="Message everyone..."
-                    onkeypress="if(event.key==='Enter') sendAll()">
-                <button class="btn-primary" onclick="sendAll()">Send</button>
+                <input type="file" id="fileInput" style="display:none" onchange="sendFile(this.files[0])">
+                <button class="btn-primary" onclick="document.getElementById('fileInput').click()"
+                    style="padding: 14px; border-radius: 50%;">📎</button>
+                <input type="text" id="chatInput" placeholder="Write a message..."
+                    onkeypress="if(event.key==='Enter') sendAll()" oninput="sendTyping()">
+                <button class="btn-primary" onclick="sendAll()" style="padding: 14px 24px;">Send</button>
             </div>
         </div>
     </div>
 
     <script>
-        /**
-         * ROBUST P2P DISCOVERY ENGINE (VERCEL OPTIMIZED)
-         */
-        const APP_KEY = "ANTIGRAVITY_V2_";
-        let peer;
+        const APP_KEY = "ANTIGRAVITY_PRO_V3";
+        let peer, hubPeer;
         let connections = new Map();
         let myShortId = sessionStorage.getItem('p2pId') || Math.random().toString(36).substring(2, 6).toUpperCase();
         sessionStorage.setItem('p2pId', myShortId);
 
-        let myIP = "";
-        let ntfyTopic = "";
-        let hubPeer = null;
+        const savedName = localStorage.getItem('chatName') || "Dev " + myShortId;
+        document.getElementById('userName').value = savedName;
+        if (!localStorage.getItem('chatName')) localStorage.setItem('chatName', savedName);
 
         function getColor(str) {
             let hash = 0;
@@ -436,58 +492,31 @@
             return `hsl(${Math.abs(hash) % 360}, 65%, 45%)`;
         }
 
-        const savedName = localStorage.getItem('chatName');
-        const defaultName = "Dev " + myShortId;
-        document.getElementById('userName').value = savedName || defaultName;
-        if (!savedName) localStorage.setItem('chatName', defaultName);
-
-        // Cleanup to prevent "Ghosts" on refresh
-        window.onbeforeunload = () => {
-            if (peer) peer.destroy();
-            if (hubPeer) hubPeer.destroy();
-        };
+        window.onbeforeunload = () => { if (peer) peer.destroy(); if (hubPeer) hubPeer.destroy(); };
 
         async function init() {
             try {
                 const res = await fetch('https://api.ipify.org?format=json').catch(() => null);
                 const data = res ? await res.json() : null;
-                const networkKey = (data && data.ip) ? data.ip.replace(/\./g, '-') : "PRIVATE-" + Math.floor(Math.random() * 1000);
-                myIP = (data && data.ip) ? data.ip : "Cloud";
-                document.getElementById('ipTag').innerText = `Hub: ${myIP}`;
-
+                const networkKey = (data && data.ip) ? data.ip.replace(/\./g, '-') : "LAN-" + Math.floor(Math.random() * 1000);
+                document.getElementById('ipTag').innerText = `Hub: ${(data && data.ip) || 'Private'}`;
                 startP2P(networkKey);
-            } catch (err) { console.error("Init failed", err); }
+            } catch (err) { console.error(err); }
         }
 
         function startP2P(networkKey) {
-            ntfyTopic = "antigravity_p2p_" + networkKey.toLowerCase();
             const myId = `${APP_KEY}NODE-${networkKey}-${myShortId}`;
             const hubId = `${APP_KEY}HUB-${networkKey}`;
 
-            peer = new Peer(myId, {
-                debug: 1, secure: true,
-                config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
-            });
+            peer = new Peer(myId, { debug: 1, secure: true, config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] } });
 
             peer.on('open', (id) => {
-                console.log("My Peer ID:", id);
-
-                // 1. Try to connect to HUB
                 const hubConn = peer.connect(hubId);
                 setupConn(hubConn);
 
-                // 2. Try to BECOME the HUB if it doesn't exist
                 hubPeer = new Peer(hubId, { debug: 0, secure: true });
                 hubPeer.on('open', () => {
-                    console.log("I am now the network HUB.");
-                    hubPeer.on('connection', c => {
-                        setupConn(c);
-                        // Intro new device to entire mesh
-                        relayNewNode(c.peer);
-                    });
-                });
-                hubPeer.on('error', (err) => {
-                    if (err.type === 'unavailable-id') console.log("HUB already exists, connecting as node.");
+                    hubPeer.on('connection', c => { setupConn(c); relayNewNode(c.peer); });
                 });
             });
 
@@ -501,102 +530,127 @@
                 updateUI();
                 c.send({ type: 'intro', name: document.getElementById('userName').value });
             });
-
-            c.on('data', (d) => {
-                if (d.type === 'chat') addChatMsg(d.name, d.text, 'received');
+            c.on('data', d => {
+                if (d.type === 'chat') addChatMsg(d.name, d.text, 'received', d.id);
+                else if (d.type === 'file') receiveFile(d);
+                else if (d.type === 'typing') handleTypingUI(d);
+                else if (d.type === 'reaction') handleReactionUI(d);
                 else if (d.type === 'ping') handlePing(d.name);
                 else if (d.type === 'intro') { c.remoteName = d.name; updateUI(); }
-                else if (d.type === 'mesh_sync') {
-                    // Mesh Introduction: Connect to this new peer directly
-                    if (d.id !== peer.id && !connections.has(d.id)) {
-                        const newConn = peer.connect(d.id);
-                        setupConn(newConn);
-                    }
-                }
+                else if (d.type === 'mesh_sync') { if (d.id !== peer.id && !connections.has(d.id)) setupConn(peer.connect(d.id)); }
             });
-
             c.on('close', () => { connections.delete(c.peer); updateUI(); });
-            c.on('error', () => { connections.delete(c.peer); updateUI(); });
         }
 
-        function relayNewNode(newNodeId) {
-            // Tell everyone in current mesh about the newcomer
-            connections.forEach(c => {
-                if (c.open && c.peer !== newNodeId) {
-                    c.send({ type: 'mesh_sync', id: newNodeId });
-                    // Also tell the newcomer about the existing person
-                    const newcomer = connections.get(newNodeId);
-                    if (newcomer && newcomer.open) newcomer.send({ type: 'mesh_sync', id: c.peer });
-                }
-            });
+        // --- Core Logic ---
+        let typingTimer;
+        function sendTyping() {
+            connections.forEach(c => c.send({ type: 'typing', name: document.getElementById('userName').value, active: true }));
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => connections.forEach(c => c.send({ type: 'typing', active: false })), 2000);
         }
+
+        function handleTypingUI(d) {
+            const el = document.getElementById('typingArea');
+            if (d.active) { el.innerText = `${d.name} is typing...`; el.classList.add('active'); }
+            else { el.classList.remove('active'); }
+        }
+
+        async function sendFile(file) {
+            if (!file || file.size > 5 * 1024 * 1024) return alert("Limit: 5MB for P2P speed.");
+            const reader = new FileReader();
+            reader.onload = () => {
+                const data = { type: 'file', name: document.getElementById('userName').value, fileName: file.name, fileData: reader.result, fileType: file.type, id: 'F' + Date.now() };
+                connections.forEach(c => c.send(data));
+                addChatMsg("You", `Sent: ${file.name}`, 'sent', data.id, data);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function receiveFile(d) { addChatMsg(d.name, `Sent: ${d.fileName}`, 'received', d.id, d); }
 
         function sendAll() {
             const i = document.getElementById('chatInput');
             const t = i.value.trim();
             if (!t) return;
             const myName = document.getElementById('userName').value;
-            const p = { type: 'chat', text: t, name: myName };
-            connections.forEach(c => { if (c.open) c.send(p); });
-            addChatMsg(myName, t, 'sent');
+            const msgId = 'M' + Date.now();
+            connections.forEach(c => c.send({ type: 'chat', text: t, name: myName, id: msgId }));
+            addChatMsg(myName, t, 'sent', msgId);
             i.value = "";
         }
 
-        function pingAll() {
-            const name = document.getElementById('userName').value;
-            connections.forEach(c => { if (c.open) c.send({ type: 'ping', name: name }); });
-            fetch(`https://ntfy.sh/${ntfyTopic}`, { method: 'POST', body: `${name} is pinging!` }).catch(() => null);
-            addSystemMsg("GLOBAL PING SENT");
+        function addReaction(msgId, emoji) {
+            connections.forEach(c => c.send({ type: 'reaction', msgId, emoji }));
+            handleReactionUI({ msgId, emoji });
         }
 
-        let lastPing = { from: "", count: 0, el: null };
+        function handleReactionUI(d) {
+            const msgEl = document.querySelector(`[data-id="${d.msgId}"] .reactions`);
+            if (msgEl) {
+                const existing = Array.from(msgEl.children).find(c => c.innerText.includes(d.emoji));
+                if (existing) {
+                    const count = parseInt(existing.innerText.match(/\d+/)[0]) + 1;
+                    existing.innerText = `${d.emoji} ${count}`;
+                } else {
+                    const chip = document.createElement('div');
+                    chip.className = 'reaction-chip';
+                    chip.innerText = `${d.emoji} 1`;
+                    msgEl.appendChild(chip);
+                }
+            }
+        }
+
+        function relayNewNode(newNodeId) {
+            connections.forEach(c => {
+                if (c.open && c.peer !== newNodeId) {
+                    c.send({ type: 'mesh_sync', id: newNodeId });
+                    const newcomer = connections.get(newNodeId);
+                    if (newcomer && newcomer.open) newcomer.send({ type: 'mesh_sync', id: c.peer });
+                }
+            });
+        }
+
+        // --- Audio/Visual ---
         function playPingSound() {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const ctx = new AudioContext();
             const playNote = (freq, start, duration) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, start);
-                gain.gain.setValueAtTime(0.1, start);
-                gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(start);
-                osc.stop(start + duration);
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(freq, start);
+                gain.gain.setValueAtTime(0.1, start); gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(start); osc.stop(start + duration);
             };
-            playNote(880, ctx.currentTime, 0.2); // A5
-            playNote(1046.50, ctx.currentTime + 0.1, 0.3); // C6
+            playNote(880, ctx.currentTime, 0.2); playNote(1046, ctx.currentTime + 0.1, 0.3);
         }
 
         function handlePing(from) {
             document.getElementById('appShell').classList.add('shake');
             setTimeout(() => document.getElementById('appShell').classList.remove('shake'), 400);
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
             playPingSound();
+            addSystemMsg(`🔔 URGENT PING FROM ${from}`);
+        }
 
-            if (lastPing.from === from && lastPing.el && lastPing.el.parentElement) {
-                lastPing.count++;
-                lastPing.el.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 [${lastPing.count}x] PING RECEIVED FROM ${from}!</div>`;
-            } else {
-                lastPing = { from, count: 1, el: null };
-                const d = document.createElement('div');
-                d.className = `msg alert`;
-                d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 PING RECEIVED FROM ${from}!</div>`;
-                document.getElementById('messages').appendChild(d);
-                lastPing.el = d;
-            }
-            document.getElementById('messages').scrollTop = 99999;
+        function pingAll() {
+            const name = document.getElementById('userName').value;
+            connections.forEach(c => c.send({ type: 'ping', name }));
+            addSystemMsg("GLOBAL PING BROADCASTED");
+        }
+
+        function exportChat() {
+            const log = Array.from(document.querySelectorAll('.msg')).map(m => m.innerText.replace(/\n/g, ' ')).join('\n');
+            const blob = new Blob([log], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'mesh_log.txt'; a.click();
         }
 
         function updateUI() {
-            const l = document.getElementById('peerStack');
-            l.innerHTML = "";
+            const l = document.getElementById('peerStack'); l.innerHTML = "";
             let count = 0;
             connections.forEach((c, id) => {
                 if (id.includes('HUB')) return;
                 count++;
-                const sid = id.split('-').pop();
-                const uName = c.remoteName || 'Dev ' + sid;
+                const uName = c.remoteName || 'Device ' + id.split('-').pop();
                 const d = document.createElement('div');
                 d.className = 'peer-card';
                 d.innerHTML = `
@@ -605,34 +659,35 @@
                         <div style="font-size:0.85rem; font-weight:bold;">${uName}</div>
                         <div style="font-size:0.65rem; color:var(--success);">Online</div>
                     </div>
-                    <button class="btn-primary" style="font-size:0.6rem; padding:6px 10px; border-radius:8px;" onclick="pingUser('${id}')">PING 🔔</button>
                 `;
                 l.appendChild(d);
             });
             document.getElementById('meshCount').innerText = `${count} Peers Online`;
         }
 
-        function pingUser(id) {
-            const c = connections.get(id);
-            if (c && c.open) {
-                const myName = document.getElementById('userName').value;
-                c.send({ type: 'ping', name: myName });
-                addSystemMsg(`DIRECT PING SENT TO ${c.remoteName || id.split('-').pop()}`);
-            }
-        }
-
-        function addChatMsg(s, t, cl) {
-            lastPing = { from: "", count: 0, el: null };
+        function addChatMsg(s, t, cl, id, fileData = null) {
             const d = document.createElement('div');
-            d.className = `msg ${cl}`;
+            d.className = `msg ${cl}`; d.setAttribute('data-id', id || 'sys');
             const avatarHtml = `<div class="peer-avatar" style="width:18px; height:18px; font-size:0.6rem; margin-right:6px; display:inline-flex; background:${getColor(s)}">${s.charAt(0).toUpperCase()}</div>`;
-            d.innerHTML = `<div style="display:flex; align-items:center; font-size:0.7rem; opacity:0.8; margin-bottom:4px; font-weight:bold;">${avatarHtml} ${s}</div><div>${t}</div>`;
+
+            let contentHtml = `<div>${t}</div>`;
+            if (fileData && fileData.fileType && fileData.fileType.startsWith('image/')) {
+                contentHtml += `<div class="file-preview"><img src="${fileData.fileData}" onclick="window.open(this.src)"></div>`;
+            } else if (fileData) {
+                contentHtml += `<div class="file-info"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${fileData.fileData}'; a.download='${fileData.fileName}'; a.click();">Download File</button></div>`;
+            }
+
+            d.innerHTML = `
+                <div style="display:flex; align-items:center; font-size:0.7rem; opacity:0.8; margin-bottom:4px; font-weight:bold;">${avatarHtml} ${s}</div>
+                ${contentHtml}
+                <div class="reactions"></div>
+                ${id ? `<div style="font-size:0.6rem; margin-top:8px; opacity:0.5; cursor:pointer;" onclick="addReaction('${id}', '👍')">React 👍</div>` : ''}
+            `;
             document.getElementById('messages').appendChild(d);
             document.getElementById('messages').scrollTop = 99999;
         }
 
         function addSystemMsg(t) {
-            lastPing = { from: "", count: 0, el: null };
             const d = document.createElement('div');
             d.style.textAlign = 'center'; d.style.fontSize = '0.7rem'; d.style.color = 'var(--text-muted)';
             d.style.margin = '10px 0'; d.innerText = `— ${t} —`;
@@ -641,7 +696,7 @@
         }
 
         init();
-        function openOfflineSub() { window.open(`https://ntfy.sh/${ntfyTopic}`, '_blank'); }
+        function openOfflineSub() { window.open(`https://ntfy.sh/antigravity_p2p_${myShortId}`, '_blank'); }
     </script>
 </body>
 
