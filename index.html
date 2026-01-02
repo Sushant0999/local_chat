@@ -31,7 +31,6 @@
             background-color: var(--bg);
             background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.2) 0px, transparent 50%);
             color: var(--text);
-            height: 100vh;
             height: 100dvh;
             display: flex;
             justify-content: center;
@@ -43,7 +42,7 @@
         .container {
             width: 100%;
             max-width: 1100px;
-            height: 90vh;
+            height: calc(100dvh - 40px);
             background: var(--card);
             backdrop-filter: blur(40px);
             border: 1px solid var(--border);
@@ -72,18 +71,13 @@
                 border-bottom: 1px solid var(--border);
                 padding: 16px !important;
                 flex-direction: row !important;
+                height: auto !important;
                 overflow-x: auto;
                 gap: 16px !important;
             }
 
             .sidebar-hide-mobile {
                 display: none !important;
-            }
-
-            .status-card {
-                flex-shrink: 0;
-                width: 200px;
-                padding: 12px !important;
             }
 
             .peer-list {
@@ -101,7 +95,6 @@
 
             .input-bar {
                 padding: 12px 16px env(safe-area-inset-bottom, 12px) !important;
-                gap: 8px !important;
             }
         }
 
@@ -112,6 +105,7 @@
             flex-direction: column;
             gap: 24px;
             background: rgba(0, 0, 0, 0.2);
+            height: 100%;
         }
 
         .status-card {
@@ -131,13 +125,15 @@
             font-size: 0.7rem;
             color: var(--text-muted);
             font-family: monospace;
+            cursor: pointer;
+            text-decoration: underline;
         }
 
         .radar-box {
             position: relative;
             width: 100%;
-            aspect-ratio: 1;
-            background: rgba(0, 0, 0, 0.3);
+            aspect-ratio: 1.2;
+            background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border);
             border-radius: 20px;
             overflow: hidden;
@@ -180,14 +176,12 @@
             margin-bottom: 12px;
             border: 1px solid transparent;
             transition: 0.2s;
-            position: relative;
         }
 
         .peer-avatar {
             width: 32px;
             height: 32px;
             border-radius: 8px;
-            background: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -242,11 +236,6 @@
             font-size: 0.95rem;
             position: relative;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-
-        .msg:hover {
-            transform: translateY(-2px);
         }
 
         .msg.sent {
@@ -273,64 +262,50 @@
         }
 
         .file-preview {
-            margin-top: 10px;
+            margin-top: 8px;
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid var(--border);
             background: rgba(0, 0, 0, 0.2);
-            max-width: 280px;
+            max-width: 300px;
         }
 
         .file-preview img {
             width: 100%;
             display: block;
             cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .file-preview img:hover {
-            filter: brightness(1.1);
         }
 
         .reactions {
             display: flex;
             gap: 4px;
-            margin-top: 8px;
-            flex-wrap: wrap;
+            margin-top: 4px;
         }
 
         .reaction-chip {
-            padding: 2px 8px;
-            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.1);
             border: 1px solid var(--border);
             border-radius: 99px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .reaction-chip:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: scale(1.1);
         }
 
         .typing-indicator {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--primary);
             font-style: italic;
             opacity: 0;
             transition: 0.3s;
-            height: 14px;
-            overflow: hidden;
+            margin-bottom: 8px;
         }
 
         .typing-indicator.active {
             opacity: 1;
-            margin-bottom: 8px;
         }
 
         .input-bar {
-            padding: 20px 32px;
+            padding: 24px 32px;
             border-top: 1px solid var(--border);
             display: flex;
             gap: 12px;
@@ -351,11 +326,6 @@
             font-size: 16px;
         }
 
-        input[type="text"]:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-        }
-
         button {
             padding: 12px 20px;
             border-radius: 14px;
@@ -373,11 +343,6 @@
         .btn-primary {
             background: var(--primary);
             color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
         }
 
         .btn-warning {
@@ -413,56 +378,54 @@
         <div class="sidebar">
             <div class="status-card">
                 <h2 id="meshCount">0 Peers Online</h2>
-                <p id="ipTag">Connecting...</p>
+                <p id="ipTag" onclick="changeRoom()">Detecting Network...</p>
             </div>
             <div class="radar-box sidebar-hide-mobile">
                 <div class="radar-line"></div>
                 <div
                     style="z-index:10; font-size:0.65rem; font-weight:bold; background:rgba(0,0,0,0.5); padding:4px 8px; border-radius:99px;">
-                    MESH ACTIVE</div>
+                    SCANNING</div>
             </div>
             <div class="peer-list">
                 <label class="sidebar-hide-mobile"
-                    style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; display: block;">Nearby
+                    style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Nearby
                     Peers</label>
-                <div id="peerStack" style="display:contents">
-                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Scanning
-                        network...</div>
+                <div id="peerStack" style="padding-top:10px">
+                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Waiting
+                        for devices...</div>
                 </div>
             </div>
             <button class="btn-warning" onclick="pingAll()" style="width:100%">📢 GLOBAL PING</button>
-            <button class="btn-primary" style="width:100%; font-size:0.75rem" onclick="openOfflineSub()">Offline
-                Alerts</button>
+            <button class="btn-primary" style="width:100%; font-size:0.75rem; background:rgba(255,255,255,0.05)"
+                onclick="openOfflineSub()">Offline Alerts</button>
         </div>
 
         <div class="chat-area">
             <div class="header">
                 <div>
-                    <h3 id="lobbyName">P2P Secure Mesh</h3>
-                    <div style="font-size: 0.7rem; color: var(--success); margin-top: 4px;">• Encryption: WebRTC / TLS
+                    <h3 id="roomName">P2P Secure Mesh</h3>
+                    <div style="font-size: 0.7rem; color: var(--success); margin-top: 4px;">• Status: Encryption Active
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:12px">
-                    <button class="btn-primary" style="font-size:0.7rem; padding:8px 14px;"
-                        onclick="exportChat()">Export History</button>
+                <div style="display:flex; align-items:center; gap:10px">
+                    <button class="btn-primary" style="font-size:0.7rem; padding:6px 12px;"
+                        onclick="exportChat()">Export (.txt)</button>
                     <span style="font-size:0.75rem; color:var(--text-muted)">Me:</span>
                     <input type="text" id="userName" placeholder="Nick"
                         onchange="localStorage.setItem('chatName', this.value)"
-                        style="width:100px; padding:8px 12px; font-size:0.8rem; border-radius:12px; flex:none;">
+                        style="width:100px; padding:6px 12px; font-size:0.8rem; border-radius:10px; flex:none;">
                 </div>
             </div>
 
             <div id="messages">
                 <div class="msg received">
                     <div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">System</div>
-                    <b>Enterprise Features Activated.</b> File sharing, reactions, and history export are now live in
-                    this mesh.
+                    <b>Modern Suite Enabled.</b> Click the Sync ID in the sidebar to manually connect if automatic
+                    discovery is blocked.
                 </div>
             </div>
 
-            <div style="padding: 0 32px">
-                <div id="typingArea" class="typing-indicator"></div>
-            </div>
+            <div id="typingArea" class="typing-indicator" style="padding: 0 32px"></div>
 
             <div class="input-bar">
                 <input type="file" id="fileInput" style="display:none" onchange="sendFile(this.files[0])">
@@ -470,21 +433,20 @@
                     style="padding: 14px; border-radius: 50%;">📎</button>
                 <input type="text" id="chatInput" placeholder="Write a message..."
                     onkeypress="if(event.key==='Enter') sendAll()" oninput="sendTyping()">
-                <button class="btn-primary" onclick="sendAll()" style="padding: 14px 24px;">Send</button>
+                <button class="btn-primary" onclick="sendAll()">Send</button>
             </div>
         </div>
     </div>
 
     <script>
-        const APP_KEY = "ANTIGRAVITY_PRO_V3";
+        const APP_KEY = "AG_MOD_01";
         let peer, hubPeer;
         let connections = new Map();
         let myShortId = sessionStorage.getItem('p2pId') || Math.random().toString(36).substring(2, 6).toUpperCase();
         sessionStorage.setItem('p2pId', myShortId);
 
-        const savedName = localStorage.getItem('chatName') || "Dev " + myShortId;
+        const savedName = localStorage.getItem('chatName') || "Dev-" + myShortId;
         document.getElementById('userName').value = savedName;
-        if (!localStorage.getItem('chatName')) localStorage.setItem('chatName', savedName);
 
         function getColor(str) {
             let hash = 0;
@@ -492,21 +454,31 @@
             return `hsl(${Math.abs(hash) % 360}, 65%, 45%)`;
         }
 
-        window.onbeforeunload = () => { if (peer) peer.destroy(); if (hubPeer) hubPeer.destroy(); };
-
         async function init() {
             try {
                 const res = await fetch('https://api.ipify.org?format=json').catch(() => null);
                 const data = res ? await res.json() : null;
-                const networkKey = (data && data.ip) ? data.ip.replace(/\./g, '-') : "LAN-" + Math.floor(Math.random() * 1000);
-                document.getElementById('ipTag').innerText = `Hub: ${(data && data.ip) || 'Private'}`;
+                const networkKey = (data && data.ip) ? data.ip.replace(/\./g, '-') : "LAN-" + Math.floor(1000 + Math.random() * 9000);
+                document.getElementById('ipTag').innerText = `Sync ID: ${networkKey}`;
                 startP2P(networkKey);
             } catch (err) { console.error(err); }
         }
 
+        function changeRoom() {
+            const newKey = prompt("Enter a Sync Room name (e.g. 'Office') to connect manually:");
+            if (newKey) {
+                if (peer) peer.destroy();
+                if (hubPeer) hubPeer.destroy();
+                connections.clear(); updateUI();
+                const cleanKey = newKey.toUpperCase().replace(/[^A-Z0-9]/g, '-');
+                document.getElementById('ipTag').innerText = `Sync ID: ${cleanKey}`;
+                startP2P(cleanKey);
+            }
+        }
+
         function startP2P(networkKey) {
-            const myId = `${APP_KEY}NODE-${networkKey}-${myShortId}`;
-            const hubId = `${APP_KEY}HUB-${networkKey}`;
+            const myId = `${APP_KEY}-N-${networkKey}-${myShortId}`;
+            const hubId = `${APP_KEY}-H-${networkKey}`;
 
             peer = new Peer(myId, { debug: 1, secure: true, config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] } });
 
@@ -542,7 +514,7 @@
             c.on('close', () => { connections.delete(c.peer); updateUI(); });
         }
 
-        // --- Core Logic ---
+        // --- Logic ---
         let typingTimer;
         function sendTyping() {
             connections.forEach(c => c.send({ type: 'typing', name: document.getElementById('userName').value, active: true }));
@@ -552,12 +524,12 @@
 
         function handleTypingUI(d) {
             const el = document.getElementById('typingArea');
-            if (d.active) { el.innerText = `${d.name} is typing...`; el.classList.add('active'); }
-            else { el.classList.remove('active'); }
+            el.innerText = d.active ? `${d.name} is typing...` : "";
+            el.classList.toggle('active', d.active);
         }
 
         async function sendFile(file) {
-            if (!file || file.size > 5 * 1024 * 1024) return alert("Limit: 5MB for P2P speed.");
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = () => {
                 const data = { type: 'file', name: document.getElementById('userName').value, fileName: file.name, fileData: reader.result, fileType: file.type, id: 'F' + Date.now() };
@@ -588,16 +560,9 @@
         function handleReactionUI(d) {
             const msgEl = document.querySelector(`[data-id="${d.msgId}"] .reactions`);
             if (msgEl) {
-                const existing = Array.from(msgEl.children).find(c => c.innerText.includes(d.emoji));
-                if (existing) {
-                    const count = parseInt(existing.innerText.match(/\d+/)[0]) + 1;
-                    existing.innerText = `${d.emoji} ${count}`;
-                } else {
-                    const chip = document.createElement('div');
-                    chip.className = 'reaction-chip';
-                    chip.innerText = `${d.emoji} 1`;
-                    msgEl.appendChild(chip);
-                }
+                const chip = document.createElement('div');
+                chip.className = 'reaction-chip'; chip.innerText = d.emoji;
+                msgEl.appendChild(chip);
             }
         }
 
@@ -611,7 +576,7 @@
             });
         }
 
-        // --- Audio/Visual & Notifications ---
+        // --- Audio/Visual ---
         let audioCtx = null;
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -623,8 +588,7 @@
 
         function playPingSound() {
             initAudio();
-            const ctx = audioCtx;
-            if (!ctx) return;
+            const ctx = audioCtx; if (!ctx) return;
             const playNote = (freq, start, duration) => {
                 const osc = ctx.createOscillator(); const gain = ctx.createGain();
                 osc.type = 'sine'; osc.frequency.setValueAtTime(freq, start);
@@ -632,8 +596,7 @@
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.start(start); osc.stop(start + duration);
             };
-            playNote(880, ctx.currentTime, 0.2);
-            playNote(1046, ctx.currentTime + 0.1, 0.3);
+            playNote(880, ctx.currentTime, 0.2); playNote(1046, ctx.currentTime + 0.1, 0.3);
         }
 
         let lastPing = { from: "", count: 0, el: null };
@@ -645,12 +608,12 @@
 
             if (lastPing.from === from && lastPing.el && lastPing.el.parentElement) {
                 lastPing.count++;
-                lastPing.el.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 [${lastPing.count}x] PING RECEIVED FROM ${from}!</div>`;
+                lastPing.el.innerHTML = `<div style="font-size:0.6rem; opacity:0.6;">SYSTEM</div>🔔 [${lastPing.count}x] PING RECEIVED FROM ${from}!`;
             } else {
                 lastPing = { from: from, count: 1, el: null };
                 const d = document.createElement('div');
                 d.className = `msg alert`;
-                d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 PING RECEIVED FROM ${from}!</div>`;
+                d.innerHTML = `<div style="font-size:0.6rem; opacity:0.6;">SYSTEM</div>🔔 PING RECEIVED FROM ${from}!`;
                 document.getElementById('messages').appendChild(d);
                 lastPing.el = d;
             }
@@ -660,9 +623,8 @@
         function pingUser(id) {
             const c = connections.get(id);
             if (c && c.open) {
-                const myName = document.getElementById('userName').value;
-                c.send({ type: 'ping', name: myName });
-                addSystemMsg(`DIRECT PING SENT TO ${c.remoteName || id.split('-').pop()}`);
+                c.send({ type: 'ping', name: document.getElementById('userName').value });
+                addSystemMsg(`SENT PING TO ${c.remoteName || id.split('-').pop()}`);
             }
         }
 
@@ -683,9 +645,9 @@
             const l = document.getElementById('peerStack'); l.innerHTML = "";
             let count = 0;
             connections.forEach((c, id) => {
-                if (id.includes('HUB')) return;
+                if (id.includes('-H-')) return;
                 count++;
-                const uName = c.remoteName || 'Device ' + id.split('-').pop();
+                const uName = c.remoteName || 'Device-' + id.split('-').pop();
                 const d = document.createElement('div');
                 d.className = 'peer-card';
                 d.innerHTML = `
@@ -694,30 +656,31 @@
                         <div style="font-size:0.85rem; font-weight:bold;">${uName}</div>
                         <div style="font-size:0.65rem; color:var(--success);">Online</div>
                     </div>
-                    <button class="btn-primary" style="font-size:0.6rem; padding:6px 12px; border-radius:8px;" onclick="pingUser('${id}')">PING 🔔</button>
+                    <button class="btn-primary" style="font-size:0.6rem; padding:4px 8px;" onclick="pingUser('${id}')">PING</button>
                 `;
                 l.appendChild(d);
             });
             document.getElementById('meshCount').innerText = `${count} Peers Online`;
+            if (count === 0) l.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Waiting for devices...</div>`;
         }
 
         function addChatMsg(s, t, cl, id, fileData = null) {
             lastPing = { from: "", count: 0, el: null };
             const d = document.createElement('div');
             d.className = `msg ${cl}`; d.setAttribute('data-id', id || 'sys');
-            const avatarHtml = `<div class="peer-avatar" style="width:18px; height:18px; font-size:0.6rem; margin-right:6px; display:inline-flex; background:${getColor(s)}">${s.charAt(0).toUpperCase()}</div>`;
+            const avatarHtml = `<div class="peer-avatar" style="width:18px; height:18px; font-size:0.55rem; margin-right:6px; display:inline-flex; background:${getColor(s)}">${s.charAt(0).toUpperCase()}</div>`;
 
             let contentHtml = `<div>${t}</div>`;
             if (fileData && fileData.fileType && fileData.fileType.startsWith('image/')) {
                 contentHtml += `<div class="file-preview"><img src="${fileData.fileData}" onclick="window.open(this.src)"></div>`;
             } else if (fileData) {
-                contentHtml += `<div class="file-info"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${fileData.fileData}'; a.download='${fileData.fileName}'; a.click();">Download File</button></div>`;
+                contentHtml += `<div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${fileData.fileData}'; a.download='${fileData.fileName}'; a.click();">Download File</button></div>`;
             }
 
             d.innerHTML = `
                 <div style="display:flex; align-items:center; font-size:0.7rem; opacity:0.8; margin-bottom:4px; font-weight:bold;">${avatarHtml} ${s}</div>
                 ${contentHtml}
-                <div class="reactions"></div>
+                <div class="reactions" style="display:flex; margin-top:5px"></div>
                 ${id ? `<div style="font-size:0.6rem; margin-top:8px; opacity:0.5; cursor:pointer;" onclick="addReaction('${id}', '👍')">React 👍</div>` : ''}
             `;
             document.getElementById('messages').appendChild(d);
@@ -727,14 +690,13 @@
         function addSystemMsg(t) {
             lastPing = { from: "", count: 0, el: null };
             const d = document.createElement('div');
-            d.style.textAlign = 'center'; d.style.fontSize = '0.7rem'; d.style.color = 'var(--text-muted)';
-            d.style.margin = '10px 0'; d.innerText = `— ${t} —`;
+            d.style = 'text-align:center; font-size:0.7rem; color:var(--text-muted); margin:10px 0';
+            d.innerText = `— ${t} —`;
             document.getElementById('messages').appendChild(d);
             document.getElementById('messages').scrollTop = 99999;
         }
 
         init();
-        setTimeout(() => addSystemMsg("Tap anywhere to enable sound alerts"), 1000);
         function openOfflineSub() { window.open(`https://ntfy.sh/antigravity_p2p_${myShortId}`, '_blank'); }
     </script>
 </body>
