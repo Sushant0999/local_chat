@@ -1,4 +1,4 @@
-# 🛰️ Antigravity P2P | Network Mesh Chat
+# 🛰️ P2P | Network Mesh Chat
 
 A high-performance, serverless P2P chat application designed for instant communication within local networks. Featuring auto-mesh discovery, a premium radar interface, and offline notification support via `ntfy.sh`.
 
