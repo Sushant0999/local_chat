@@ -550,17 +550,38 @@
         }
 
         let lastPing = { from: "", count: 0, el: null };
+        function playPingSound() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const playNote = (freq, start, duration) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, start);
+                gain.gain.setValueAtTime(0.1, start);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(start);
+                osc.stop(start + duration);
+            };
+            playNote(880, ctx.currentTime, 0.2); // A5
+            playNote(1046.50, ctx.currentTime + 0.1, 0.3); // C6
+        }
+
         function handlePing(from) {
             document.getElementById('appShell').classList.add('shake');
             setTimeout(() => document.getElementById('appShell').classList.remove('shake'), 400);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            playPingSound();
+
             if (lastPing.from === from && lastPing.el && lastPing.el.parentElement) {
                 lastPing.count++;
-                lastPing.el.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 [${lastPing.count}x] PING FROM ${from}!</div>`;
+                lastPing.el.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 [${lastPing.count}x] PING RECEIVED FROM ${from}!</div>`;
             } else {
                 lastPing = { from, count: 1, el: null };
                 const d = document.createElement('div');
                 d.className = `msg alert`;
-                d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 PING FROM ${from}!</div>`;
+                d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 PING RECEIVED FROM ${from}!</div>`;
                 document.getElementById('messages').appendChild(d);
                 lastPing.el = d;
             }
@@ -578,10 +599,26 @@
                 const uName = c.remoteName || 'Dev ' + sid;
                 const d = document.createElement('div');
                 d.className = 'peer-card';
-                d.innerHTML = `<div class="peer-avatar" style="background:${getColor(uName)}">${uName.charAt(0).toUpperCase()}</div><div style="flex:1"><div style="font-size:0.85rem; font-weight:bold;">${uName}</div><div style="font-size:0.65rem; color:var(--success);">Online</div></div>`;
+                d.innerHTML = `
+                    <div class="peer-avatar" style="background:${getColor(uName)}">${uName.charAt(0).toUpperCase()}</div>
+                    <div style="flex:1">
+                        <div style="font-size:0.85rem; font-weight:bold;">${uName}</div>
+                        <div style="font-size:0.65rem; color:var(--success);">Online</div>
+                    </div>
+                    <button class="btn-primary" style="font-size:0.6rem; padding:6px 10px; border-radius:8px;" onclick="pingUser('${id}')">PING 🔔</button>
+                `;
                 l.appendChild(d);
             });
             document.getElementById('meshCount').innerText = `${count} Peers Online`;
+        }
+
+        function pingUser(id) {
+            const c = connections.get(id);
+            if (c && c.open) {
+                const myName = document.getElementById('userName').value;
+                c.send({ type: 'ping', name: myName });
+                addSystemMsg(`DIRECT PING SENT TO ${c.remoteName || id.split('-').pop()}`);
+            }
         }
 
         function addChatMsg(s, t, cl) {
