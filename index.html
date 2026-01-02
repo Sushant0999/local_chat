@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Antigravity P2P | Advanced Network Mesh</title>
+    <title>Antigravity P2P | Network Mesh</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -339,18 +339,17 @@
 <body>
 
     <div class="container" id="appShell">
-        <!-- Sidebar: Discovery -->
         <div class="sidebar">
             <div class="status-card">
                 <h2 id="meshCount">Network Mesh</h2>
-                <p id="ipTag">Identifying...</p>
+                <p id="ipTag">Connecting...</p>
             </div>
 
             <div class="radar-box sidebar-hide-mobile">
                 <div class="radar-line"></div>
                 <div
                     style="z-index:10; font-size:0.65rem; font-weight:bold; background:rgba(0,0,0,0.5); padding:4px 8px; border-radius:99px;">
-                    SCANNING...</div>
+                    RADAR ACTIVE</div>
             </div>
 
             <div class="peer-list">
@@ -358,26 +357,22 @@
                     style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; display: block;">Nearby
                     Peers</label>
                 <div id="peerStack" style="display:contents">
-                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Waiting...
-                    </div>
+                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Searching
+                        network...</div>
                 </div>
             </div>
 
-            <button class="btn-warning btn-warning-mobile" onclick="pingAll()">
-                📢 GLOBAL PING
-            </button>
-
+            <button class="btn-warning btn-warning-mobile" onclick="pingAll()">📢 GLOBAL PING</button>
             <div class="sidebar-hide-mobile" style="padding-top:10px; border-top:1px solid var(--border);">
-                <button class="btn-primary" style="width:100%; font-size:0.75rem" onclick="openOfflineSub()">Enable
-                    Offline Pings</button>
+                <button class="btn-primary" style="width:100%; font-size:0.75rem" onclick="openOfflineSub()">Offline
+                    Alerts</button>
             </div>
         </div>
 
-        <!-- Main: Chat -->
         <div class="chat-area">
             <div class="header">
                 <div>
-                    <h3 id="lobbyName">Global Lobby</h3>
+                    <h3 id="lobbyName">P2P Lobby</h3>
                     <div id="statusDot" style="font-size: 0.7rem; color: var(--success); margin-top: 4px;">• Mesh
                         Discovery On</div>
                 </div>
@@ -392,13 +387,12 @@
             <div id="messages">
                 <div class="msg received">
                     <div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">System</div>
-                    <b>Radar Discovery is active.</b> Everyone on your local WiFi will appear in the sidebar
-                    automatically.
+                    <b>Auto-Discovery Active.</b> Devices on your network will appear automatically.
                 </div>
             </div>
 
             <div class="input-bar">
-                <input type="text" id="chatInput" placeholder="Message the network..."
+                <input type="text" id="chatInput" placeholder="Message everyone..."
                     onkeypress="if(event.key==='Enter') sendAll()">
                 <button class="btn-primary" onclick="sendAll()">Send</button>
             </div>
@@ -406,93 +400,67 @@
     </div>
 
     <script>
+        /**
+         * ROBUST P2P DISCOVERY ENGINE (VERCEL OPTIMIZED)
+         */
+        const APP_KEY = "ANTIGRAVITY_V2_";
         let peer;
         let connections = new Map();
         let myShortId = Math.random().toString(36).substring(2, 6).toUpperCase();
         let myIP = "";
         let ntfyTopic = "";
-        const APP_KEY = "ANTIGRAVITY_V1_"; // UNIQUE PREFIX FOR GLOBAL P2P PROTECTION
+        let hubPeer = null;
 
         if (localStorage.getItem('chatName')) document.getElementById('userName').value = localStorage.getItem('chatName');
 
         async function init() {
             try {
-                // Try to get Public IP (Grouping Key)
                 const res = await fetch('https://api.ipify.org?format=json').catch(() => null);
                 const data = res ? await res.json() : null;
+                const networkKey = (data && data.ip) ? data.ip.replace(/\./g, '-') : "PRIVATE-" + Math.floor(Math.random() * 1000);
+                myIP = (data && data.ip) ? data.ip : "Cloud";
+                document.getElementById('ipTag').innerText = `Hub: ${myIP}`;
 
-                if (data && data.ip) {
-                    myIP = data.ip;
-                    document.getElementById('ipTag').innerText = `Hub: ${myIP}`;
-                    startP2P(myIP.replace(/\./g, '-'));
-                } else {
-                    // Fallback: If IP is blocked, ask user for a Room Name or use a default
-                    document.getElementById('ipTag').innerText = "IP Blocked. Use Secret Room ->";
-                    const secret = prompt("Public IP discovery was blocked. Enter a 'Secret Room Name' to find your friends:", "PrivateRoom123");
-                    if (secret) startP2P(btoa(secret).substring(0, 8));
-                }
-            } catch (err) { console.error("Init Error:", err); }
+                startP2P(networkKey);
+            } catch (err) { console.error("Init failed", err); }
         }
 
         function startP2P(networkKey) {
-            ntfyTopic = "antigravity_p2p_" + networkKey.substring(0, 16).toLowerCase();
+            ntfyTopic = "antigravity_p2p_" + networkKey.toLowerCase();
             const myId = `${APP_KEY}NODE-${networkKey}-${myShortId}`;
+            const hubId = `${APP_KEY}HUB-${networkKey}`;
 
             peer = new Peer(myId, {
-                debug: 1,
-                secure: true,
+                debug: 1, secure: true,
                 config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
             });
 
             peer.on('open', (id) => {
-                console.log("My Main Peer ID:", id);
-                // Discovery Scan
-                for (let i = 1; i <= 3; i++) {
-                    const lobbyId = `${APP_KEY}LOBBY-${networkKey}-${i}`;
+                console.log("My Peer ID:", id);
 
-                    // Attempt to connect to the lobby slot
-                    const conn = peer.connect(lobbyId);
-                    conn.on('open', () => {
-                        console.log("Connected to Lobby Hub:", lobbyId);
-                        conn.send({ type: 'discover_request', myRealId: peer.id });
-                    });
+                // 1. Try to connect to HUB
+                const hubConn = peer.connect(hubId);
+                setupConn(hubConn);
 
-                    // If slot is empty, try to occupy it
-                    const probe = new Peer(lobbyId, { debug: 0, secure: true });
-                    probe.on('open', () => {
-                        console.log("Occupying Lobby Slot:", i);
-                        probe.on('connection', c => {
-                            c.on('data', data => {
-                                if (data.type === 'discover_request') {
-                                    // I am the lobby, tell the connector my real NODE ID
-                                    c.send({ type: 'discover_response', hostRealId: peer.id });
-                                    // Also introduce the new person to everyone I know
-                                    relayNode(data.myRealId);
-                                }
-                            });
-                        });
+                // 2. Try to BECOME the HUB if it doesn't exist
+                hubPeer = new Peer(hubId, { debug: 0, secure: true });
+                hubPeer.on('open', () => {
+                    console.log("I am now the network HUB.");
+                    hubPeer.on('connection', c => {
+                        setupConn(c);
+                        // Intro new device to entire mesh
+                        relayNewNode(c.peer);
                     });
-                }
+                });
+                hubPeer.on('error', (err) => {
+                    if (err.type === 'unavailable-id') console.log("HUB already exists, connecting as node.");
+                });
             });
 
             peer.on('connection', c => setupConn(c));
         }
 
         function setupConn(c) {
-            // Only NODE connections are used for chat
-            if (!c.peer.includes('NODE')) {
-                c.on('data', data => {
-                    if (data.type === 'discover_response') {
-                        // Got the host's real ID, connect directly
-                        if (!connections.has(data.hostRealId)) setupConn(peer.connect(data.hostRealId));
-                    } else if (data.type === 'mesh_node') {
-                        // Got a node from relay, connect directly
-                        if (data.id !== peer.id && !connections.has(data.id)) setupConn(peer.connect(data.id));
-                    }
-                });
-                return;
-            }
-
             c.on('open', () => {
                 if (connections.has(c.peer)) return;
                 connections.set(c.peer, c);
@@ -504,59 +472,29 @@
                 if (d.type === 'chat') addChatMsg(d.name, d.text, 'received');
                 else if (d.type === 'ping') handlePing(d.name);
                 else if (d.type === 'intro') { c.remoteName = d.name; updateUI(); }
-                else if (d.type === 'mesh_node') {
-                    if (d.id !== peer.id && !connections.has(d.id)) setupConn(peer.connect(d.id));
+                else if (d.type === 'mesh_sync') {
+                    // Mesh Introduction: Connect to this new peer directly
+                    if (d.id !== peer.id && !connections.has(d.id)) {
+                        const newConn = peer.connect(d.id);
+                        setupConn(newConn);
+                    }
                 }
             });
 
             c.on('close', () => { connections.delete(c.peer); updateUI(); });
+            c.on('error', () => { connections.delete(c.peer); updateUI(); });
         }
 
-        function relayNode(newNodeId) {
-            // Tell all my NODE connections about this new NODE
+        function relayNewNode(newNodeId) {
+            // Tell everyone in current mesh about the newcomer
             connections.forEach(c => {
                 if (c.open && c.peer !== newNodeId) {
-                    c.send({ type: 'mesh_node', id: newNodeId });
+                    c.send({ type: 'mesh_sync', id: newNodeId });
+                    // Also tell the newcomer about the existing person
+                    const newcomer = connections.get(newNodeId);
+                    if (newcomer && newcomer.open) newcomer.send({ type: 'mesh_sync', id: c.peer });
                 }
             });
-        }
-
-        function pingAll() {
-            const name = document.getElementById('userName').value;
-            connections.forEach(c => { if (c.open) c.send({ type: 'ping', name: name }); });
-            fetch(`https://ntfy.sh/${ntfyTopic}`, { method: 'POST', body: `${name} is pinging the Mesh!`, headers: { 'Title': 'Direct Network Alert' } });
-            addSystemMsg("GLOBAL BROADCAST SENT");
-        }
-
-        let lastPing = { from: "", count: 0, el: null };
-
-        function handlePing(from) {
-            document.getElementById('appShell').classList.add('shake');
-            setTimeout(() => document.getElementById('appShell').classList.remove('shake'), 400);
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator();
-            osc.connect(ctx.destination);
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            osc.start(); osc.stop(ctx.currentTime + 0.2);
-
-            if (lastPing.from === from && lastPing.el && lastPing.el.parentElement) {
-                lastPing.count++;
-                lastPing.el.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 <b>[${lastPing.count}x]</b> PING RECEIVED FROM ${from}!</div>`;
-                lastPing.el.style.transform = "scale(1.05)";
-                setTimeout(() => lastPing.el.style.transform = "scale(1)", 100);
-            } else {
-                lastPing.from = from;
-                lastPing.count = 1;
-                const d = document.createElement('div');
-                d.className = `msg alert`;
-                d.style.transition = "transform 0.1s ease";
-                d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 PING RECEIVED FROM ${from}!</div>`;
-                document.getElementById('messages').appendChild(d);
-                lastPing.el = d;
-            }
-            document.getElementById('messages').scrollTop = 99999;
         }
 
         function sendAll() {
@@ -567,17 +505,39 @@
             connections.forEach(c => { if (c.open) c.send(p); });
             addChatMsg("You", t, 'sent');
             i.value = "";
-            i.blur();
         }
 
-        function openOfflineSub() { window.open(`https://ntfy.sh/${ntfyTopic}`, '_blank'); }
+        function pingAll() {
+            const name = document.getElementById('userName').value;
+            connections.forEach(c => { if (c.open) c.send({ type: 'ping', name: name }); });
+            fetch(`https://ntfy.sh/${ntfyTopic}`, { method: 'POST', body: `${name} is pinging!` }).catch(() => null);
+            addSystemMsg("GLOBAL PING SENT");
+        }
+
+        let lastPing = { from: "", count: 0, el: null };
+        function handlePing(from) {
+            document.getElementById('appShell').classList.add('shake');
+            setTimeout(() => document.getElementById('appShell').classList.remove('shake'), 400);
+            if (lastPing.from === from && lastPing.el && lastPing.el.parentElement) {
+                lastPing.count++;
+                lastPing.el.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 [${lastPing.count}x] PING FROM ${from}!</div>`;
+            } else {
+                lastPing = { from, count: 1, el: null };
+                const d = document.createElement('div');
+                d.className = `msg alert`;
+                d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">SYSTEM</div><div>🔔 PING FROM ${from}!</div>`;
+                document.getElementById('messages').appendChild(d);
+                lastPing.el = d;
+            }
+            document.getElementById('messages').scrollTop = 99999;
+        }
 
         function updateUI() {
             const l = document.getElementById('peerStack');
             l.innerHTML = "";
             let count = 0;
             connections.forEach((c, id) => {
-                if (!id.startsWith('NODE-')) return;
+                if (id.includes('HUB')) return;
                 count++;
                 const sid = id.split('-').pop();
                 const d = document.createElement('div');
@@ -589,7 +549,7 @@
         }
 
         function addChatMsg(s, t, cl) {
-            lastPing = { from: "", count: 0, el: null }; // Reset ping stack on new message
+            lastPing = { from: "", count: 0, el: null };
             const d = document.createElement('div');
             d.className = `msg ${cl}`;
             d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">${s}</div><div>${t}</div>`;
@@ -598,7 +558,7 @@
         }
 
         function addSystemMsg(t) {
-            lastPing = { from: "", count: 0, el: null }; // Reset ping stack on system msg
+            lastPing = { from: "", count: 0, el: null };
             const d = document.createElement('div');
             d.style.textAlign = 'center'; d.style.fontSize = '0.7rem'; d.style.color = 'var(--text-muted)';
             d.style.margin = '10px 0'; d.innerText = `— ${t} —`;
@@ -607,6 +567,7 @@
         }
 
         init();
+        function openOfflineSub() { window.open(`https://ntfy.sh/${ntfyTopic}`, '_blank'); }
     </script>
 </body>
 
