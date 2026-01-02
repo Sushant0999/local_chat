@@ -215,6 +215,8 @@
             display: flex;
             flex-direction: column;
             background: rgba(0, 0, 0, 0.1);
+            height: 100%;
+            overflow: hidden;
         }
 
         .header {
@@ -232,6 +234,19 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
+            min-height: 0;
+            /* Ensures container doesn't expand past parent */
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) transparent;
+        }
+
+        #messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #messages::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
         }
 
         .msg {
@@ -271,6 +286,8 @@
             border-top: 1px solid var(--border);
             display: flex;
             gap: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
         }
 
         input {
@@ -378,7 +395,7 @@
                 </div>
                 <div style="display:flex; align-items:center; gap:10px">
                     <span style="font-size:0.75rem; color:var(--text-muted)">Me:</span>
-                    <input type="text" id="userName" value="User"
+                    <input type="text" id="userName" placeholder="Set Name"
                         onchange="localStorage.setItem('chatName', this.value)"
                         style="width:100px; padding:6px 12px; font-size:0.8rem; border-radius:10px; flex:none;">
                 </div>
@@ -406,12 +423,29 @@
         const APP_KEY = "ANTIGRAVITY_V2_";
         let peer;
         let connections = new Map();
-        let myShortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+        let myShortId = sessionStorage.getItem('p2pId') || Math.random().toString(36).substring(2, 6).toUpperCase();
+        sessionStorage.setItem('p2pId', myShortId);
+
         let myIP = "";
         let ntfyTopic = "";
         let hubPeer = null;
 
-        if (localStorage.getItem('chatName')) document.getElementById('userName').value = localStorage.getItem('chatName');
+        function getColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            return `hsl(${Math.abs(hash) % 360}, 65%, 45%)`;
+        }
+
+        const savedName = localStorage.getItem('chatName');
+        const defaultName = "Dev " + myShortId;
+        document.getElementById('userName').value = savedName || defaultName;
+        if (!savedName) localStorage.setItem('chatName', defaultName);
+
+        // Cleanup to prevent "Ghosts" on refresh
+        window.onbeforeunload = () => {
+            if (peer) peer.destroy();
+            if (hubPeer) hubPeer.destroy();
+        };
 
         async function init() {
             try {
@@ -501,9 +535,10 @@
             const i = document.getElementById('chatInput');
             const t = i.value.trim();
             if (!t) return;
-            const p = { type: 'chat', text: t, name: document.getElementById('userName').value };
+            const myName = document.getElementById('userName').value;
+            const p = { type: 'chat', text: t, name: myName };
             connections.forEach(c => { if (c.open) c.send(p); });
-            addChatMsg("You", t, 'sent');
+            addChatMsg(myName, t, 'sent');
             i.value = "";
         }
 
@@ -540,19 +575,21 @@
                 if (id.includes('HUB')) return;
                 count++;
                 const sid = id.split('-').pop();
+                const uName = c.remoteName || 'Dev ' + sid;
                 const d = document.createElement('div');
                 d.className = 'peer-card';
-                d.innerHTML = `<div class="peer-avatar">${(c.remoteName || sid).charAt(0).toUpperCase()}</div><div style="flex:1"><div style="font-size:0.85rem; font-weight:bold;">${c.remoteName || 'Dev ' + sid}</div><div style="font-size:0.65rem; color:var(--success);">Active</div></div>`;
+                d.innerHTML = `<div class="peer-avatar" style="background:${getColor(uName)}">${uName.charAt(0).toUpperCase()}</div><div style="flex:1"><div style="font-size:0.85rem; font-weight:bold;">${uName}</div><div style="font-size:0.65rem; color:var(--success);">Online</div></div>`;
                 l.appendChild(d);
             });
-            document.getElementById('meshCount').innerText = `Mesh (${count} Online)`;
+            document.getElementById('meshCount').innerText = `${count} Peers Online`;
         }
 
         function addChatMsg(s, t, cl) {
             lastPing = { from: "", count: 0, el: null };
             const d = document.createElement('div');
             d.className = `msg ${cl}`;
-            d.innerHTML = `<div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">${s}</div><div>${t}</div>`;
+            const avatarHtml = `<div class="peer-avatar" style="width:18px; height:18px; font-size:0.6rem; margin-right:6px; display:inline-flex; background:${getColor(s)}">${s.charAt(0).toUpperCase()}</div>`;
+            d.innerHTML = `<div style="display:flex; align-items:center; font-size:0.7rem; opacity:0.8; margin-bottom:4px; font-weight:bold;">${avatarHtml} ${s}</div><div>${t}</div>`;
             document.getElementById('messages').appendChild(d);
             document.getElementById('messages').scrollTop = 99999;
         }
