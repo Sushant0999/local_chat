@@ -36,16 +36,6 @@ To receive alerts when your computer is locked or the tab is closed:
 
 ---
 
-## 🌐 Deployment (Vercel)
-
-This app is optimized for Vercel out of the box. 
-1. Push your `index.html` to a GitHub repository.
-2. Import the project into **Vercel**.
-3. It will automatically detect the settings and deploy.
-4. **Note**: PeerJS requires HTTPS (which Vercel provides) to establish secure P2P channels.
-
----
-
 ## 🔒 Privacy & Security
 
 - **Direct Communication**: Messages travel directly between peers; they are never stored on a server.
@@ -65,5 +55,3 @@ This app is optimized for Vercel out of the box.
   - Check your OS "Do Not Disturb" settings.
 
 ---
-
-Designed with ❤️ for High-Stakes Local Communication.
