@@ -661,6 +661,9 @@
                             addSystemMsg("Host approved entry.");
                             // Only setup connection if allowed, and it's the hub connection
                             if (d.fromHub) setupConn(hubConn);
+                            if (d.peerList) d.peerList.forEach(pid => {
+                                if (pid !== peer.id && !connections.has(pid)) setupConn(peer.connect(pid));
+                            });
                         }
                         else {
                             addSystemMsg("ENTRY DENIED: " + d.reason);
@@ -668,6 +671,11 @@
                             // Optionally, destroy peer if entry is denied to prevent further connections
                             peer.destroy();
                         }
+                    }
+                    else if (d.type === 'mesh_gossip') {
+                        d.ids.forEach(pid => {
+                            if (pid !== peer.id && !connections.has(pid)) setupConn(peer.connect(pid));
+                        });
                     }
                 });
                 hubConn.on('close', () => {
@@ -686,7 +694,8 @@
                             if (d.type === 'join_request') {
                                 const needsApproval = document.getElementById('requireApproval').checked;
                                 if (!needsApproval || confirm(`Admission Request: Allow "${d.name}" to join this room?`)) {
-                                    c.send({ type: 'join_response', allowed: true, fromHub: true });
+                                    const peerList = Array.from(connections.keys()).filter(id => !id.includes('-H-'));
+                                    c.send({ type: 'join_response', allowed: true, fromHub: true, peerList });
                                     setupConn(c);
                                     relayNewNode(c.peer);
                                 } else {
@@ -697,11 +706,27 @@
                         });
                     });
                 });
+
+                hubPeer.on('error', (err) => {
+                    if (err.type === 'unavailable-id') {
+                        // Hub already exists, which is fine
+                        isHost = false;
+                    }
+                });
             });
 
             peer.on('connection', c => setupConn(c));
             peer.on('call', handleIncomingCall);
         }
+
+        // Periodic gossip to keep the mesh alive
+        setInterval(() => {
+            if (connections.size === 0) return;
+            const allPeers = Array.from(connections.keys()).filter(id => !id.includes('-H-'));
+            connections.forEach(c => {
+                if (c.open) c.send({ type: 'mesh_gossip', ids: allPeers });
+            });
+        }, 15000);
 
         async function handleIncomingCall(call) {
             if (activeCalls.has(call.peer)) return; // Prevent double trigger
@@ -751,6 +776,11 @@
                     if (isNew) addSystemMsg(`${d.name} joined the room`);
                     updateUI();
                 }
+                else if (d.type === 'mesh_gossip') {
+                    d.ids.forEach(pid => {
+                        if (pid !== peer.id && !connections.has(pid)) setupConn(peer.connect(pid));
+                    });
+                }
                 else if (d.type === 'mesh_sync') { if (d.id !== peer.id && !connections.has(d.id)) setupConn(peer.connect(d.id)); }
                 else if (d.type === 'invite') handleInvite(d);
                 else if (d.type === 'file-chunk') handleFileChunk(d);
@@ -761,6 +791,12 @@
                     addSystemMsg(`${name} left the room`);
                     connections.delete(c.peer);
                     updateUI();
+
+                    // If the hub connection closed and we aren't the host, try to become the hub
+                    if (c.peer.includes('-H-') && !isHost) {
+                        addSystemMsg("Host connection lost. Attempting to become the new room host...");
+                        startP2P(document.getElementById('ipTag').innerText.replace('Sync ID: ', ''));
+                    }
                 }
             });
         }
