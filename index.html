@@ -418,10 +418,33 @@
 
         video {
             width: 100%;
+            height: 100%;
+            object-fit: cover;
             border-radius: 20px;
             background: #000;
+        }
+
+        .video-container {
+            position: relative;
+            aspect-ratio: 16/9;
+            border-radius: 20px;
+            overflow: hidden;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
             border: 1px solid var(--border);
+        }
+
+        .video-label {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            color: white;
+            z-index: 5;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .local-video {
@@ -473,6 +496,48 @@
         .btn-mute.active {
             background: #ef4444;
             border-color: #ef4444;
+        }
+
+        /* Giphy UI */
+        .giphy-panel {
+            position: absolute;
+            bottom: 110px;
+            left: 32px;
+            right: 32px;
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 20px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        .giphy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+
+        .giphy-thumb {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .giphy-thumb:hover {
+            transform: scale(1.03);
+            border-color: var(--primary);
         }
     </style>
 </head>
@@ -543,10 +608,18 @@
 
             <div id="typingArea" class="typing-indicator" style="padding: 0 32px"></div>
 
+            <div id="giphyPanel" class="giphy-panel">
+                <input type="text" id="giphySearch" placeholder="Search Giphy..." oninput="searchGiphy(this.value)"
+                    style="width:100%">
+                <div id="giphyGrid" class="giphy-grid"></div>
+            </div>
+
             <div class="input-bar">
                 <input type="file" id="fileInput" style="display:none" onchange="sendFile(this.files[0])">
                 <button class="btn-primary" onclick="document.getElementById('fileInput').click()"
                     style="padding: 14px; border-radius: 50%;">📎</button>
+                <button class="btn-primary" onclick="toggleGiphy()"
+                    style="padding: 14px; border-radius: 50%; background: #ff6b6b">🎬</button>
                 <input type="text" id="chatInput" placeholder="Write a message..."
                     onkeypress="if(event.key==='Enter') sendAll()" oninput="sendTyping()">
                 <button class="btn-primary" onclick="sendAll()">Send</button>
@@ -735,7 +808,10 @@
             }
 
             c.on('data', d => {
-                if (d.type === 'chat') addChatMsg(d.name, d.text, 'received', d.id);
+                if (d.type === 'chat') {
+                    if (d.gif) addChatMsg(d.name, '', 'received', d.id, { isGif: true, gifUrl: d.gif });
+                    else addChatMsg(d.name, d.text, 'received', d.id);
+                }
                 else if (d.type === 'file') receiveFile(d);
                 else if (d.type === 'typing') handleTypingUI(d);
                 else if (d.type === 'reaction') handleReactionUI(d);
@@ -885,28 +961,35 @@
             document.getElementById('callStatus').innerText = `${activeCalls.size} Participant(s)`;
 
             call.on('stream', remoteStream => {
-                let vid = document.getElementById('vid-' + call.peer);
-                if (!vid) {
-                    vid = document.createElement('video');
-                    vid.id = 'vid-' + call.peer;
-                    vid.autoplay = true;
-                    vid.playsInline = true;
-                    document.getElementById('remoteVideos').appendChild(vid);
+                let container = document.getElementById('cont-' + call.peer);
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'cont-' + call.peer;
+                    container.className = 'video-container';
+
+                    const peerName = (connections.get(call.peer) && connections.get(call.peer).remoteName) || 'Peer';
+
+                    container.innerHTML = `
+                        <video id="vid-${call.peer}" autoplay playsinline></video>
+                        <div class="video-label">${peerName}</div>
+                    `;
+                    document.getElementById('remoteVideos').appendChild(container);
                 }
-                vid.srcObject = remoteStream;
+                const vid = document.getElementById('vid-' + call.peer);
+                if (vid) vid.srcObject = remoteStream;
             });
 
             call.on('close', () => {
-                const vid = document.getElementById('vid-' + call.peer);
-                if (vid) vid.remove();
+                const container = document.getElementById('cont-' + call.peer);
+                if (container) container.remove();
                 activeCalls.delete(call.peer);
                 if (activeCalls.size === 0) endCall(false);
                 else document.getElementById('callStatus').innerText = `${activeCalls.size} Participant(s)`;
             });
 
             call.on('error', () => {
-                const vid = document.getElementById('vid-' + call.peer);
-                if (vid) vid.remove();
+                const container = document.getElementById('cont-' + call.peer);
+                if (container) container.remove();
                 activeCalls.delete(call.peer);
             });
         }
@@ -956,6 +1039,39 @@
         }
 
         // --- Logic ---
+        const GIPHY_KEY = "dc6zaTOxFJmzC"; // Public Beta Key
+        let giphyTimeout;
+
+        function toggleGiphy() {
+            const panel = document.getElementById('giphyPanel');
+            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+            if (panel.style.display === 'flex') {
+                document.getElementById('giphySearch').focus();
+                searchGiphy("");
+            }
+        }
+
+        async function searchGiphy(q) {
+            clearTimeout(giphyTimeout);
+            giphyTimeout = setTimeout(async () => {
+                const url = q ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${q}&limit=20` : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=20`;
+                try {
+                    const res = await fetch(url);
+                    const { data } = await res.json();
+                    const grid = document.getElementById('giphyGrid');
+                    grid.innerHTML = data.map(g => `<img src="${g.images.fixed_height_small.url}" class="giphy-thumb" onclick="sendGiphy('${g.images.fixed_height.url}')">`).join('');
+                } catch (err) { console.error(err); }
+            }, 300);
+        }
+
+        function sendGiphy(url) {
+            const myName = document.getElementById('userName').value;
+            const msgId = 'G' + Date.now();
+            connections.forEach(c => c.send({ type: 'chat', text: '', gif: url, name: myName, id: msgId }));
+            addChatMsg(myName, '', 'sent', msgId, { isGif: true, gifUrl: url });
+            toggleGiphy();
+        }
+
         let typingTimer;
         function sendTyping() {
             connections.forEach(c => c.send({ type: 'typing', name: document.getElementById('userName').value, active: true }));
@@ -1200,7 +1316,9 @@
             const avatarHtml = `<div class="peer-avatar" style="width:18px; height:18px; font-size:0.55rem; margin-right:6px; display:inline-flex; background:${getColor(s)}">${s.charAt(0).toUpperCase()}</div>`;
 
             let contentHtml = `<div class="file-content"><div>${t}</div></div>`;
-            if (fileData && !fileData.isStreaming) {
+            if (fileData && fileData.isGif) {
+                contentHtml = `<div class="file-content"><div class="file-preview"><img src="${fileData.gifUrl}" style="max-height:200px; width:auto; border-radius:12px;"></div></div>`;
+            } else if (fileData && !fileData.isStreaming) {
                 if (fileData.fileType && fileData.fileType.startsWith('image/')) {
                     contentHtml = `<div class="file-content"><div>${t}</div><div class="file-preview"><img src="${fileData.fileData}" onclick="window.open(this.src)"></div></div>`;
                 } else {
@@ -1220,7 +1338,16 @@
                 <div style="display:flex; align-items:center; font-size:0.7rem; opacity:0.8; margin-bottom:4px; font-weight:bold;">${avatarHtml} ${s}</div>
                 ${contentHtml}
                 <div class="reactions" style="display:flex; margin-top:5px"></div>
-                ${id ? `<div style="font-size:0.6rem; margin-top:8px; opacity:0.5; cursor:pointer;" onclick="addReaction('${id}', '👍')">React 👍</div>` : ''}
+                ${id ? `
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '👍')">👍</span>
+                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '❤️')">❤️</span>
+                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '😂')">😂</span>
+                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '😮')">😮</span>
+                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '�')">😢</span>
+                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '🔥')">�</span>
+                </div>
+                ` : ''}
             `;
             document.getElementById('messages').appendChild(d);
             document.getElementById('messages').scrollTop = 99999;
