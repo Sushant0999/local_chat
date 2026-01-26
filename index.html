@@ -369,6 +369,28 @@
                 transform: translateX(5px);
             }
         }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        .file-info {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
     </style>
 </head>
 
@@ -398,6 +420,8 @@
             <button class="btn-warning" onclick="pingAll()" style="width:100%">📢 GLOBAL PING</button>
             <button class="btn-primary" style="width:100%; font-size:0.75rem; background:rgba(255,255,255,0.05)"
                 onclick="openOfflineSub()">Offline Alerts</button>
+            <button id="createGroupBtn" class="btn-primary" style="width:100%; display:none; margin-top:10px;"
+                onclick="createGroup()">Create Group (0)</button>
         </div>
 
         <div class="chat-area">
@@ -440,8 +464,10 @@
 
     <script>
         const APP_KEY = "AG_MOD_01";
+        const CHUNK_SIZE = 16384 * 4; // 64KB per chunk
         let peer, hubPeer;
         let connections = new Map();
+        let fileChunks = {}; // { fileId: { chunks: [], received: 0, total: 0 } }
         let myShortId = sessionStorage.getItem('p2pId') || Math.random().toString(36).substring(2, 6).toUpperCase();
         sessionStorage.setItem('p2pId', myShortId);
 
@@ -467,16 +493,27 @@
         function changeRoom() {
             const newKey = prompt("Enter a Sync Room name (e.g. 'Office') to connect manually:");
             if (newKey) {
-                if (peer) peer.destroy();
-                if (hubPeer) hubPeer.destroy();
-                connections.clear(); updateUI();
                 const cleanKey = newKey.toUpperCase().replace(/[^A-Z0-9]/g, '-');
-                document.getElementById('ipTag').innerText = `Sync ID: ${cleanKey}`;
-                startP2P(cleanKey);
+                joinRoom(cleanKey);
+            }
+        }
+
+        function applyRoomTheme(roomName) {
+            const color = getColor(roomName);
+            document.documentElement.style.setProperty('--primary', color);
+            // Generate a darker version for hover
+            const hue = parseInt(color.match(/\d+/)[0]);
+            document.documentElement.style.setProperty('--primary-hover', `hsl(${hue}, 65%, 35%)`);
+            // Update the radar color too
+            const radarLine = document.querySelector('.radar-line');
+            if (radarLine) {
+                radarLine.style.background = `conic-gradient(from 0deg, transparent, ${color}66)`;
             }
         }
 
         function startP2P(networkKey) {
+            applyRoomTheme(networkKey);
+            document.getElementById('roomName').innerText = `Room: ${networkKey}`;
             const myId = `${APP_KEY}-N-${networkKey}-${myShortId}`;
             const hubId = `${APP_KEY}-H-${networkKey}`;
 
@@ -510,8 +547,54 @@
                 else if (d.type === 'ping') handlePing(d.name);
                 else if (d.type === 'intro') { c.remoteName = d.name; updateUI(); }
                 else if (d.type === 'mesh_sync') { if (d.id !== peer.id && !connections.has(d.id)) setupConn(peer.connect(d.id)); }
+                else if (d.type === 'invite') handleInvite(d);
+                else if (d.type === 'file-chunk') handleFileChunk(d);
             });
             c.on('close', () => { connections.delete(c.peer); updateUI(); });
+        }
+
+        function updateGroupBtn() {
+            const selected = document.querySelectorAll('.peer-selector:checked');
+            const btn = document.getElementById('createGroupBtn');
+            btn.innerText = `Create Group (${selected.length})`;
+            btn.style.display = selected.length > 0 ? 'block' : 'none';
+        }
+
+        function createGroup() {
+            const selected = Array.from(document.querySelectorAll('.peer-selector:checked')).map(cb => cb.value);
+            if (selected.length === 0) return;
+
+            const groupName = prompt("Enter a name for your new group:", "Private Group " + Math.random().toString(36).substring(2, 5).toUpperCase());
+            if (!groupName) return;
+
+            const cleanGroupName = groupName.toUpperCase().replace(/[^A-Z0-9]/g, '-');
+            const myName = document.getElementById('userName').value;
+
+            selected.forEach(id => {
+                const c = connections.get(id);
+                if (c && c.open) {
+                    c.send({ type: 'invite', room: cleanGroupName, from: myName });
+                }
+            });
+
+            addSystemMsg(`CREATING GROUP "${cleanGroupName}" AND SWITCHING...`);
+            setTimeout(() => joinRoom(cleanGroupName), 500);
+        }
+
+        function handleInvite(d) {
+            if (confirm(`${d.from} invited you to join a private group: "${d.room}". Join now?`)) {
+                joinRoom(d.room);
+            }
+        }
+
+        function joinRoom(roomKey) {
+            if (peer) peer.destroy();
+            if (hubPeer) hubPeer.destroy();
+            connections.clear();
+            updateUI();
+            document.getElementById('ipTag').innerText = `Sync ID: ${roomKey}`;
+            startP2P(roomKey);
+            addSystemMsg(`JOINED ROOM: ${roomKey}`);
         }
 
         // --- Logic ---
@@ -530,13 +613,97 @@
 
         async function sendFile(file) {
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-                const data = { type: 'file', name: document.getElementById('userName').value, fileName: file.name, fileData: reader.result, fileType: file.type, id: 'F' + Date.now() };
+            const myName = document.getElementById('userName').value;
+            const fileId = 'F' + Date.now();
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+            addChatMsg("You", `Sending: ${file.name}`, 'sent', fileId, {
+                fileName: file.name,
+                isStreaming: true,
+                totalSize: (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+            });
+
+            let offset = 0;
+            let index = 0;
+            while (offset < file.size) {
+                const slice = file.slice(offset, offset + CHUNK_SIZE);
+                const buffer = await slice.arrayBuffer();
+
+                const data = {
+                    type: 'file-chunk',
+                    fileId,
+                    fileName: file.name,
+                    fileType: file.type,
+                    chunk: buffer,
+                    index: index,
+                    total: totalChunks,
+                    name: myName
+                };
+
                 connections.forEach(c => c.send(data));
-                addChatMsg("You", `Sent: ${file.name}`, 'sent', data.id, data);
-            };
+
+                offset += CHUNK_SIZE;
+                index++;
+
+                const progress = Math.min(100, (offset / file.size) * 100);
+                updateProgressUI(fileId, progress);
+
+                // Small sleep to prevent channel congestion on very fast networks
+                if (index % 10 === 0) await new Promise(r => setTimeout(r, 10));
+            }
+
+            // After all chunks sent, we finalize our own UI
+            const reader = new FileReader();
+            reader.onload = () => finalizeFileUI(fileId, reader.result, file.type, file.name);
             reader.readAsDataURL(file);
+        }
+
+        function handleFileChunk(d) {
+            if (!fileChunks[d.fileId]) {
+                fileChunks[d.fileId] = { chunks: [], received: 0, total: d.total };
+                addChatMsg(d.name, `Receiving: ${d.fileName}`, 'received', d.fileId, {
+                    fileName: d.fileName,
+                    isStreaming: true
+                });
+            }
+
+            const f = fileChunks[d.fileId];
+            if (!f.chunks[d.index]) {
+                f.chunks[d.index] = d.chunk;
+                f.received++;
+
+                const progress = (f.received / f.total) * 100;
+                updateProgressUI(d.fileId, progress);
+
+                if (f.received === f.total) {
+                    const blob = new Blob(f.chunks, { type: d.fileType });
+                    const url = URL.createObjectURL(blob);
+                    finalizeFileUI(d.fileId, url, d.fileType, d.fileName);
+                    delete fileChunks[d.fileId];
+                }
+            }
+        }
+
+        function updateProgressUI(fileId, progress) {
+            const el = document.querySelector(`[data-id="${fileId}"] .progress-bar`);
+            if (el) el.style.width = progress + '%';
+        }
+
+        function finalizeFileUI(fileId, dataUrl, type, name) {
+            const msgEl = document.querySelector(`[data-id="${fileId}"] .file-content`);
+            if (!msgEl) return;
+
+            let html = "";
+            if (type.startsWith('image/')) {
+                html = `<div class="file-preview"><img src="${dataUrl}" onclick="window.open(this.src)"></div>`;
+            } else {
+                html = `<div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${dataUrl}'; a.download='${name}'; a.click();">Download File</button></div>`;
+            }
+            msgEl.innerHTML = html;
+
+            // Remove progress bar
+            const progressContainer = document.querySelector(`[data-id="${fileId}"] .progress-container`);
+            if (progressContainer) progressContainer.remove();
         }
 
         function receiveFile(d) { addChatMsg(d.name, `Sent: ${d.fileName}`, 'received', d.id, d); }
@@ -651,6 +818,7 @@
                 const d = document.createElement('div');
                 d.className = 'peer-card';
                 d.innerHTML = `
+                    <input type="checkbox" class="peer-selector" value="${id}" onchange="updateGroupBtn()" style="width:18px; height:18px; cursor:pointer;">
                     <div class="peer-avatar" style="background:${getColor(uName)}">${uName.charAt(0).toUpperCase()}</div>
                     <div style="flex:1">
                         <div style="font-size:0.85rem; font-weight:bold;">${uName}</div>
@@ -661,6 +829,7 @@
                 l.appendChild(d);
             });
             document.getElementById('meshCount').innerText = `${count} Peers Online`;
+            updateGroupBtn();
             if (count === 0) l.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Waiting for devices...</div>`;
         }
 
@@ -670,11 +839,21 @@
             d.className = `msg ${cl}`; d.setAttribute('data-id', id || 'sys');
             const avatarHtml = `<div class="peer-avatar" style="width:18px; height:18px; font-size:0.55rem; margin-right:6px; display:inline-flex; background:${getColor(s)}">${s.charAt(0).toUpperCase()}</div>`;
 
-            let contentHtml = `<div>${t}</div>`;
-            if (fileData && fileData.fileType && fileData.fileType.startsWith('image/')) {
-                contentHtml += `<div class="file-preview"><img src="${fileData.fileData}" onclick="window.open(this.src)"></div>`;
-            } else if (fileData) {
-                contentHtml += `<div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${fileData.fileData}'; a.download='${fileData.fileName}'; a.click();">Download File</button></div>`;
+            let contentHtml = `<div class="file-content"><div>${t}</div></div>`;
+            if (fileData && !fileData.isStreaming) {
+                if (fileData.fileType && fileData.fileType.startsWith('image/')) {
+                    contentHtml = `<div class="file-content"><div>${t}</div><div class="file-preview"><img src="${fileData.fileData}" onclick="window.open(this.src)"></div></div>`;
+                } else {
+                    contentHtml = `<div class="file-content"><div>${t}</div><div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${fileData.fileData}'; a.download='${fileData.fileName}'; a.click();">Download File</button></div></div>`;
+                }
+            } else if (fileData && fileData.isStreaming) {
+                contentHtml = `
+                    <div class="file-content">
+                        <div>${t} ${fileData.totalSize ? `(${fileData.totalSize})` : ''}</div>
+                        <div class="progress-container"><div class="progress-bar"></div></div>
+                        <div class="file-info">Streaming chunks...</div>
+                    </div>
+                `;
             }
 
             d.innerHTML = `
