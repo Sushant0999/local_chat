@@ -504,6 +504,9 @@
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px">
+                    <button class="btn-primary"
+                        style="font-size:0.7rem; padding:6px 12px; background:var(--success); border-radius:10px;"
+                        onclick="startGroupCall()">Group Call</button>
                     <button class="btn-primary" style="font-size:0.7rem; padding:6px 12px;"
                         onclick="exportChat()">Export (.txt)</button>
                     <span style="font-size:0.75rem; color:var(--text-muted)">Me:</span>
@@ -536,11 +539,13 @@
 
     <!-- Call Overlay -->
     <div id="callOverlay">
-        <div class="video-grid">
-            <video id="remoteVideo" autoplay playsinline></video>
-            <video id="localVideo" class="local-video" autoplay muted playsinline></video>
+        <div class="video-grid" id="remoteVideos">
+            <!-- Remote videos will be injected here -->
         </div>
-        <div id="callStatus" style="margin-top: 20px; font-weight: bold; color: var(--text-muted);">Calling...</div>
+        <video id="localVideo" class="local-video" autoplay muted playsinline></video>
+        <div id="callStatus"
+            style="margin-top: 20px; font-weight: bold; color: var(--text-muted); position: absolute; bottom: 120px;">
+            Calling...</div>
         <div class="call-controls">
             <button class="btn-round btn-hangup" onclick="endCall()">📞</button>
         </div>
@@ -551,7 +556,7 @@
         const CHUNK_SIZE = 16384 * 4; // 64KB per chunk
         let peer, hubPeer;
         let connections = new Map();
-        let activeCall = null;
+        let activeCalls = new Map(); // peerId -> call object
         let localStream = null;
         let fileChunks = {}; // { fileId: { chunks: [], received: 0, total: 0 } }
         let myShortId = sessionStorage.getItem('p2pId') || Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -629,15 +634,20 @@
         }
 
         async function handleIncomingCall(call) {
-            if (confirm(`Incoming video/audio call from ${call.peer.split('-').pop()}. Answer?`)) {
+            if (activeCalls.has(call.peer)) return; // Prevent double trigger
+
+            const peerName = (connections.get(call.peer) && connections.get(call.peer).remoteName) || call.peer.split('-').pop();
+
+            if (activeCalls.size > 0 || confirm(`Incoming call from ${peerName}. Answer?`)) {
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                    localStream = stream;
-                    document.getElementById('localVideo').srcObject = stream;
-                    call.answer(stream);
+                    if (!localStream) {
+                        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                        document.getElementById('localVideo').srcObject = localStream;
+                    }
+                    call.answer(localStream);
                     setupCall(call);
                 } catch (err) {
-                    alert("Could not access camera/mic");
+                    console.error("Call error:", err);
                     call.close();
                 }
             } else {
@@ -732,15 +742,38 @@
         }
 
         // --- Call Features ---
-        async function startCall(remoteId, video = true) {
+        async function startGroupCall() {
+            if (connections.size === 0) return alert("No peers online to call!");
+
             try {
-                addSystemMsg(`REQUESTING CAMERA/MIC...`);
-                const stream = await navigator.mediaDevices.getUserMedia({ video: video, audio: true });
-                localStream = stream;
-                document.getElementById('localVideo').srcObject = stream;
+                if (!localStream) {
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    document.getElementById('localVideo').srcObject = localStream;
+                }
                 document.getElementById('callOverlay').style.display = 'flex';
 
-                const call = peer.call(remoteId, stream);
+                connections.forEach((conn, id) => {
+                    if (id.includes('-H-')) return;
+                    if (!activeCalls.has(id)) {
+                        const call = peer.call(id, localStream);
+                        setupCall(call);
+                    }
+                });
+            } catch (err) {
+                alert("Camera/Mic access denied.");
+            }
+        }
+
+        async function startCall(remoteId, video = true) {
+            try {
+                if (!localStream) {
+                    addSystemMsg(`REQUESTING CAMERA/MIC...`);
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: video, audio: true });
+                    document.getElementById('localVideo').srcObject = localStream;
+                }
+                document.getElementById('callOverlay').style.display = 'flex';
+
+                const call = peer.call(remoteId, localStream);
                 setupCall(call);
             } catch (err) {
                 console.error(err);
@@ -749,32 +782,52 @@
         }
 
         function setupCall(call) {
-            activeCall = call;
+            if (activeCalls.has(call.peer)) return;
+            activeCalls.set(call.peer, call);
+
             document.getElementById('callOverlay').style.display = 'flex';
-            document.getElementById('callStatus').innerText = "Connected to Peer";
+            document.getElementById('callStatus').innerText = `${activeCalls.size} Participant(s)`;
 
             call.on('stream', remoteStream => {
-                document.getElementById('remoteVideo').srcObject = remoteStream;
+                let vid = document.getElementById('vid-' + call.peer);
+                if (!vid) {
+                    vid = document.createElement('video');
+                    vid.id = 'vid-' + call.peer;
+                    vid.autoplay = true;
+                    vid.playsInline = true;
+                    document.getElementById('remoteVideos').appendChild(vid);
+                }
+                vid.srcObject = remoteStream;
             });
 
-            call.on('close', () => endCall(false));
-            call.on('error', err => {
-                console.error(err);
-                endCall();
+            call.on('close', () => {
+                const vid = document.getElementById('vid-' + call.peer);
+                if (vid) vid.remove();
+                activeCalls.delete(call.peer);
+                if (activeCalls.size === 0) endCall(false);
+                else document.getElementById('callStatus').innerText = `${activeCalls.size} Participant(s)`;
+            });
+
+            call.on('error', () => {
+                const vid = document.getElementById('vid-' + call.peer);
+                if (vid) vid.remove();
+                activeCalls.delete(call.peer);
             });
         }
 
         function endCall(notify = true) {
-            if (activeCall) {
-                if (notify) activeCall.close();
-                activeCall = null;
-            }
+            activeCalls.forEach(call => {
+                if (notify) call.close();
+            });
+            activeCalls.clear();
+
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
+
             document.getElementById('callOverlay').style.display = 'none';
-            document.getElementById('remoteVideo').srcObject = null;
+            document.getElementById('remoteVideos').innerHTML = "";
             document.getElementById('localVideo').srcObject = null;
         }
 
