@@ -463,6 +463,17 @@
             background: #dc2626;
             transform: scale(1.1);
         }
+
+        .btn-mute {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid var(--border);
+        }
+
+        .btn-mute.active {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
     </style>
 </head>
 
@@ -504,6 +515,12 @@
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px">
+                    <label
+                        style="font-size: 0.65rem; color: var(--text-muted); display:flex; align-items:center; gap:4px">
+                        <input type="checkbox" id="requireApproval"
+                            onchange="localStorage.setItem('requireApproval', this.checked)">
+                        🔒 Approval Req.
+                    </label>
                     <button class="btn-primary"
                         style="font-size:0.7rem; padding:6px 12px; background:var(--success); border-radius:10px;"
                         onclick="startGroupCall()">Group Call</button>
@@ -547,7 +564,9 @@
             style="margin-top: 20px; font-weight: bold; color: var(--text-muted); position: absolute; bottom: 120px;">
             Calling...</div>
         <div class="call-controls">
+            <button id="micBtn" class="btn-round btn-mute" onclick="toggleMic()">🎤</button>
             <button class="btn-round btn-hangup" onclick="endCall()">📞</button>
+            <button id="camBtn" class="btn-round btn-mute" onclick="toggleCam()">📷</button>
         </div>
     </div>
 
@@ -558,6 +577,7 @@
         let connections = new Map();
         let activeCalls = new Map(); // peerId -> call object
         let localStream = null;
+        let isHost = false;
         let fileChunks = {}; // { fileId: { chunks: [], received: 0, total: 0 } }
         let myShortId = sessionStorage.getItem('p2pId') || Math.random().toString(36).substring(2, 6).toUpperCase();
         sessionStorage.setItem('p2pId', myShortId);
@@ -578,6 +598,11 @@
                 const networkKey = (data && data.ip) ? data.ip.replace(/\./g, '-') : "LAN-" + Math.floor(1000 + Math.random() * 9000);
                 document.getElementById('ipTag').innerText = `Sync ID: ${networkKey}`;
                 startP2P(networkKey);
+
+                // Initialize approval checkbox state
+                const approvalChecked = localStorage.getItem('requireApproval') === 'true';
+                document.getElementById('requireApproval').checked = approvalChecked;
+
             } catch (err) { console.error(err); }
         }
 
@@ -620,12 +645,57 @@
             peer = new Peer(myId, { debug: 1, secure: true, config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] } });
 
             peer.on('open', (id) => {
+                // Try to connect to the hub peer (if it exists)
                 const hubConn = peer.connect(hubId);
-                setupConn(hubConn);
 
+                // Newcomer logic: Request to join
+                hubConn.on('open', () => {
+                    hubConn.send({
+                        type: 'join_request',
+                        name: document.getElementById('userName').value
+                    });
+                });
+                hubConn.on('data', d => {
+                    if (d.type === 'join_response') {
+                        if (d.allowed) {
+                            addSystemMsg("Host approved entry.");
+                            // Only setup connection if allowed, and it's the hub connection
+                            if (d.fromHub) setupConn(hubConn);
+                        }
+                        else {
+                            addSystemMsg("ENTRY DENIED: " + d.reason);
+                            hubConn.close();
+                            // Optionally, destroy peer if entry is denied to prevent further connections
+                            peer.destroy();
+                        }
+                    }
+                });
+                hubConn.on('close', () => {
+                    if (!isHost && !hubConn.remoteName) { // If not host and connection closed before intro/approval
+                        addSystemMsg("Connection to host lost or denied. Try changing rooms.");
+                    }
+                });
+
+                // Also try to become the hub peer
                 hubPeer = new Peer(hubId, { debug: 0, secure: true });
                 hubPeer.on('open', () => {
-                    hubPeer.on('connection', c => { setupConn(c); relayNewNode(c.peer); });
+                    isHost = true;
+                    addSystemMsg("Host Privileges Active: You are the gatekeeper.");
+                    hubPeer.on('connection', c => {
+                        c.on('data', d => {
+                            if (d.type === 'join_request') {
+                                const needsApproval = document.getElementById('requireApproval').checked;
+                                if (!needsApproval || confirm(`Admission Request: Allow "${d.name}" to join this room?`)) {
+                                    c.send({ type: 'join_response', allowed: true, fromHub: true });
+                                    setupConn(c);
+                                    relayNewNode(c.peer);
+                                } else {
+                                    c.send({ type: 'join_response', allowed: false, reason: 'Entry denied by room host' });
+                                    setTimeout(() => c.close(), 500);
+                                }
+                            }
+                        });
+                    });
                 });
             });
 
@@ -656,8 +726,11 @@
         }
 
         function setupConn(c) {
+            // Prevent setting up the same connection multiple times
+            if (connections.has(c.peer) && connections.get(c.peer) === c) return;
+
             c.on('open', () => {
-                if (connections.has(c.peer)) return;
+                if (connections.has(c.peer)) return; // Check again in case of race condition
                 connections.set(c.peer, c);
                 updateUI();
                 c.send({ type: 'intro', name: document.getElementById('userName').value });
@@ -668,6 +741,10 @@
                 else if (d.type === 'typing') handleTypingUI(d);
                 else if (d.type === 'reaction') handleReactionUI(d);
                 else if (d.type === 'ping') handlePing(d.name);
+                else if (d.type === 'join_response') {
+                    if (d.allowed) { addSystemMsg("Host approved entry."); setupConn(c); }
+                    else { addSystemMsg("ENTRY DENIED: " + d.reason); c.close(); }
+                }
                 else if (d.type === 'intro') {
                     const isNew = !c.remoteName;
                     c.remoteName = d.name;
@@ -829,6 +906,34 @@
             document.getElementById('callOverlay').style.display = 'none';
             document.getElementById('remoteVideos').innerHTML = "";
             document.getElementById('localVideo').srcObject = null;
+
+            // Reset buttons
+            document.getElementById('micBtn').classList.remove('active');
+            document.getElementById('camBtn').classList.remove('active');
+            document.getElementById('micBtn').innerText = '🎤';
+            document.getElementById('camBtn').innerText = '📷';
+        }
+
+        function toggleMic() {
+            if (!localStream) return;
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                const btn = document.getElementById('micBtn');
+                btn.classList.toggle('active', !audioTrack.enabled);
+                btn.innerText = audioTrack.enabled ? '🎤' : '🔇';
+            }
+        }
+
+        function toggleCam() {
+            if (!localStream) return;
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                const btn = document.getElementById('camBtn');
+                btn.classList.toggle('active', !videoTrack.enabled);
+                btn.innerText = videoTrack.enabled ? '📷' : '🚫';
+            }
         }
 
         // --- Logic ---
