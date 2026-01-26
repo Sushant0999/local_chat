@@ -52,4 +52,3 @@ Local Chat is a modern, serverless, peer-to-peer messaging application built wit
 - **APIs**: Tenor API (for GIFs)
 
 ---
-Built by Antigravity - A powerful P2P Chat Suite.
