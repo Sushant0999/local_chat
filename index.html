@@ -501,14 +501,23 @@
         function applyRoomTheme(roomName) {
             const color = getColor(roomName);
             document.documentElement.style.setProperty('--primary', color);
-            // Generate a darker version for hover
-            const hue = parseInt(color.match(/\d+/)[0]);
+
+            // Extract hue for related colors
+            const hue = color.match(/\d+/)[0];
             document.documentElement.style.setProperty('--primary-hover', `hsl(${hue}, 65%, 35%)`);
-            // Update the radar color too
+
+            // Update the radar color with proper HSLA syntax
             const radarLine = document.querySelector('.radar-line');
             if (radarLine) {
-                radarLine.style.background = `conic-gradient(from 0deg, transparent, ${color}66)`;
+                radarLine.style.background = `conic-gradient(from 0deg, transparent, hsla(${hue}, 65%, 45%, 0.4))`;
             }
+
+            // Update container border and status card for more visual feedback
+            const container = document.querySelector('.container');
+            if (container) container.style.borderColor = `hsla(${hue}, 65%, 45%, 0.3)`;
+
+            const roomIndicator = document.getElementById('roomName');
+            if (roomIndicator) roomIndicator.style.color = color;
         }
 
         function startP2P(networkKey) {
@@ -545,12 +554,24 @@
                 else if (d.type === 'typing') handleTypingUI(d);
                 else if (d.type === 'reaction') handleReactionUI(d);
                 else if (d.type === 'ping') handlePing(d.name);
-                else if (d.type === 'intro') { c.remoteName = d.name; updateUI(); }
+                else if (d.type === 'intro') {
+                    const isNew = !c.remoteName;
+                    c.remoteName = d.name;
+                    if (isNew) addSystemMsg(`${d.name} joined the room`);
+                    updateUI();
+                }
                 else if (d.type === 'mesh_sync') { if (d.id !== peer.id && !connections.has(d.id)) setupConn(peer.connect(d.id)); }
                 else if (d.type === 'invite') handleInvite(d);
                 else if (d.type === 'file-chunk') handleFileChunk(d);
             });
-            c.on('close', () => { connections.delete(c.peer); updateUI(); });
+            c.on('close', () => {
+                if (connections.has(c.peer)) {
+                    const name = c.remoteName || 'A peer';
+                    addSystemMsg(`${name} left the room`);
+                    connections.delete(c.peer);
+                    updateUI();
+                }
+            });
         }
 
         function updateGroupBtn() {
@@ -592,6 +613,15 @@
             if (hubPeer) hubPeer.destroy();
             connections.clear();
             updateUI();
+
+            // Clear previous room messages
+            document.getElementById('messages').innerHTML = `
+                <div class="msg received">
+                    <div style="font-size:0.7rem; opacity:0.6; margin-bottom:4px;">System</div>
+                    <b>Switched to Room: ${roomKey}</b>. Connection establishing...
+                </div>
+            `;
+
             document.getElementById('ipTag').innerText = `Sync ID: ${roomKey}`;
             startP2P(roomKey);
             addSystemMsg(`JOINED ROOM: ${roomKey}`);
