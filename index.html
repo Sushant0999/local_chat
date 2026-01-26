@@ -283,12 +283,32 @@
         }
 
         .reaction-chip {
-            padding: 2px 6px;
-            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.08);
             border: 1px solid var(--border);
             border-radius: 99px;
-            font-size: 0.7rem;
+            font-size: 0.8rem;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: 0.2s;
+        }
+
+        .reaction-chip:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .reaction-chip .count {
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--primary);
+            display: none;
+            /* Hidden by default, shown when > 1 */
+        }
+
+        .reaction-chip.has-count .count {
+            display: inline;
         }
 
         .typing-indicator {
@@ -609,7 +629,7 @@
             <div id="typingArea" class="typing-indicator" style="padding: 0 32px"></div>
 
             <div id="giphyPanel" class="giphy-panel">
-                <input type="text" id="giphySearch" placeholder="Search Giphy..." oninput="searchGiphy(this.value)"
+                <input type="text" id="giphySearch" placeholder="Search GIFs..." oninput="searchGIFs(this.value)"
                     style="width:100%">
                 <div id="giphyGrid" class="giphy-grid"></div>
             </div>
@@ -1039,32 +1059,33 @@
         }
 
         // --- Logic ---
-        const GIPHY_KEY = "dc6zaTOxFJmzC"; // Public Beta Key
-        let giphyTimeout;
+        const TENOR_KEY = "LIVDSRZULELA";
+        let gifTimeout;
 
         function toggleGiphy() {
             const panel = document.getElementById('giphyPanel');
             panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
             if (panel.style.display === 'flex') {
                 document.getElementById('giphySearch').focus();
-                searchGiphy("");
+                searchGIFs("");
             }
         }
 
-        async function searchGiphy(q) {
-            clearTimeout(giphyTimeout);
-            giphyTimeout = setTimeout(async () => {
-                const url = q ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${q}&limit=20` : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=20`;
+        async function searchGIFs(q) {
+            clearTimeout(gifTimeout);
+            gifTimeout = setTimeout(async () => {
+                const url = q ? `https://api.tenor.com/v1/search?q=${encodeURIComponent(q)}&key=${TENOR_KEY}&limit=20` : `https://api.tenor.com/v1/trending?key=${TENOR_KEY}&limit=20`;
                 try {
                     const res = await fetch(url);
-                    const { data } = await res.json();
+                    const { results } = await res.json();
+                    if (!results) return;
                     const grid = document.getElementById('giphyGrid');
-                    grid.innerHTML = data.map(g => `<img src="${g.images.fixed_height_small.url}" class="giphy-thumb" onclick="sendGiphy('${g.images.fixed_height.url}')">`).join('');
-                } catch (err) { console.error(err); }
+                    grid.innerHTML = results.map(g => `<img src="${g.media[0].tinygif.url}" class="giphy-thumb" onclick="sendGIF('${g.media[0].gif.url}')">`).join('');
+                } catch (err) { console.error("GIF Search Error:", err); }
             }, 300);
         }
 
-        function sendGiphy(url) {
+        function sendGIF(url) {
             const myName = document.getElementById('userName').value;
             const msgId = 'G' + Date.now();
             connections.forEach(c => c.send({ type: 'chat', text: '', gif: url, name: myName, id: msgId }));
@@ -1075,6 +1096,7 @@
         let typingTimer;
         function sendTyping() {
             connections.forEach(c => c.send({ type: 'typing', name: document.getElementById('userName').value, active: true }));
+            clearTimeout(typingTimer);
             typingTimer = setTimeout(() => connections.forEach(c => c.send({ type: 'typing', active: false })), 2000);
         }
 
@@ -1198,11 +1220,21 @@
         }
 
         function handleReactionUI(d) {
-            const msgEl = document.querySelector(`[data-id="${d.msgId}"] .reactions`);
-            if (msgEl) {
-                const chip = document.createElement('div');
-                chip.className = 'reaction-chip'; chip.innerText = d.emoji;
-                msgEl.appendChild(chip);
+            const reactionsContainer = document.querySelector(`[data-id="${d.msgId}"] .reactions`);
+            if (reactionsContainer) {
+                let chip = reactionsContainer.querySelector(`[data-emoji="${d.emoji}"]`);
+                if (chip) {
+                    let countEl = chip.querySelector('.count');
+                    let count = parseInt(countEl.innerText) + 1;
+                    countEl.innerText = count;
+                    chip.classList.add('has-count');
+                } else {
+                    chip = document.createElement('div');
+                    chip.className = 'reaction-chip';
+                    chip.setAttribute('data-emoji', d.emoji);
+                    chip.innerHTML = `${d.emoji} <span class="count">1</span>`;
+                    reactionsContainer.appendChild(chip);
+                }
             }
         }
 
