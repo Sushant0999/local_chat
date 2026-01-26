@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Local Chat</title>
+    <link rel="icon" type="image/png" href="logo.png">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -566,6 +567,10 @@
 
     <div class="container" id="appShell">
         <div class="sidebar">
+            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                <img src="logo.png" alt="Local Chat Logo"
+                    style="width: 120px; height: auto; border-radius: 12px; filter: drop-shadow(0 0 10px var(--primary));">
+            </div>
             <div class="status-card">
                 <h2 id="meshCount">0 Peers Online</h2>
                 <p id="ipTag" onclick="changeRoom()">Detecting Network...</p>

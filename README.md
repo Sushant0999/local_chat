@@ -1,57 +1,55 @@
-# 🛰️ P2P | Network Mesh Chat
+# Local Chat - Mesh P2P Secure Messenger
 
-A high-performance, serverless P2P chat application designed for instant communication within local networks. Featuring auto-mesh discovery, a premium radar interface, and offline notification support via `ntfy.sh`.
+Local Chat is a modern, serverless, peer-to-peer messaging application built with PeerJS and WebRTC. It allows for secure communication directly between browsers without a central data storage server.
 
----
+![Local Chat Logo](logo.png)
 
-## 🚀 Key Features
+## 🚀 Features
 
-- **Zero-Server P2P**: Direct device-to-device communication using WebRTC (PeerJS).
-- **Auto-Mesh Discovery**: Automatically finds and connects to everyone on your WiFi—no registration or manual IDs required.
-- **Premium Radar UI**: Stunning, modern interface with real-time network scanning animations.
-- **Mobile Optimized**: Responsive design with haptic vibration feedback for pings.
-- **Offline Alerts**: Receive pings even when the browser tab is closed or your device is locked (Integrated with `ntfy.sh`).
-- **Ping Stacking**: Smart notification system that groups multiple pings into a single, animated counter.
+### 📡 P2P Mesh Connectivity
+- **Dynamic Discovery**: Automatically finds and connects to peers in the same room.
+- **Mesh Gossip Protocol**: Periodic synchronization of peer lists to maintain a 100% connected network.
+- **Host Failover**: Automatic self-healing where a new peer becomes the host if the current host leaves.
 
----
+### 💬 Rich Messaging
+- **Real-time Chat**: Lag-free messaging with typing indicators.
+- **Extended Reactions**: React to messages with 👍, ❤️, 😂, 😮, 😢, and 🔥.
+- **Stacked Counters**: Reactions stack with counts for a clean UI.
+- **GIF Integration**: Integrated Tenor GIF search for expressive communication.
+
+### 🎥 Multimedia Communication
+- **Voice & Video Calls**: High-quality P2P audio/video communication.
+- **Group Video Calls**: Supports multiple participants with a dynamic grid layout.
+- **In-Call Controls**: Toggle Microphone, Toggle Camera, and Hang up options.
+- **Remote Labels**: Participants' names are displayed directly on their video feeds.
+
+### 📂 Secure File Sharing
+- **Chunked Streaming**: Files are sent in small chunks for high reliability even with large files.
+- **Live Progress Bars**: Real-time upload and download progress indicators.
+- **Automatic Reconstruction**: Files are assembled and ready to download/view instantly.
+
+### 🔐 Security & Privacy
+- **Private Rooms**: Create custom Sync ID rooms for private discussions.
+- **Admission Control**: Hosts can enable "Approval Required" mode to gate keep new entrants.
+- **Serverless**: Zero data is stored on any server; communication is direct browser-to-browser.
+
+### 🎨 Premium Aesthetics
+- **Dynamic Room Themes**: Every room gets a unique color scheme based on its ID.
+- **Modern UI**: Sleek dark mode design with glassmorphism and smooth animations.
+- **Responsive Design**: Works seamlessly across desktop and mobile devices.
 
 ## 🛠️ How to Use
+1. Open the application in your browser.
+2. Enter your nickname.
+3. Share your **Sync ID** with others or stay in the default room.
+4. Click the **Approval Req.** toggle if you want to moderate who joins.
+5. Have fun chatting, calling, and sharing!
 
-### 1. Basic Chatting
-1. Open the application (locally or via your Vercel URL) on two or more devices.
-2. Ensure all devices are on the **same WiFi/Network**.
-3. Devices will automatically appear in the **Nearby Peers** sidebar within seconds.
-4. Start chatting instantly!
-
-### 2. Global Pings (The "Bell")
-1. Click the 📢 **GLOBAL PING** button to send an instant alert to every device in your mesh.
-2. If a device has the tab open, it will **shake**, play a **sound**, and show a **notification pulse**.
-
-### 3. Enabling Offline Notifications (Crucial)
-To receive alerts when your computer is locked or the tab is closed:
-1. Click **"Offline Alerts"** in the sidebar.
-2. A small window will open showing your network's private topic.
-3. Click **"Subscribe"** or **"Enable Notifications"** on that page.
-4. You can now close the chat tab. When someone clicks "Global Ping," your OS will show a system-level notification.
+## 🔧 Technologies Used
+- **Frontend**: HTML5, CSS3 (Vanilla), JavaScript (ES6+)
+- **Networking**: [PeerJS](https://peerjs.com/) (WebRTC wrapper)
+- **Media**: WebRTC MediaStreams
+- **APIs**: Tenor API (for GIFs)
 
 ---
-
-## 🔒 Privacy & Security
-
-- **Direct Communication**: Messages travel directly between peers; they are never stored on a server.
-- **Network Isolation**: The application uses your Public IP as a "Hub Key," ensuring your group stays private to your local environment.
-- **No Tracking**: No cookies, no databases, no tracking scripts. Just pure code.
-
----
-
-## 🛠️ Troubleshooting
-
-- **No devices appearing?**
-  - Ensure you are on the same WiFi.
-  - Refresh the page to re-trigger the "Hub Handshake."
-  - check if your network/router blocks WebRTC (rare for home/office networks).
-- **Offline Pings not working?**
-  - Ensure you have granted notification permissions in the `ntfy.sh` window.
-  - Check your OS "Do Not Disturb" settings.
-
----
+Built by Antigravity - A powerful P2P Chat Suite.
