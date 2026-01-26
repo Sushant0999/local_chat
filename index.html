@@ -645,46 +645,10 @@
             peer = new Peer(myId, { debug: 1, secure: true, config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] } });
 
             peer.on('open', (id) => {
-                // Try to connect to the hub peer (if it exists)
                 const hubConn = peer.connect(hubId);
+                setupConn(hubConn);
 
-                // Newcomer logic: Request to join
-                hubConn.on('open', () => {
-                    hubConn.send({
-                        type: 'join_request',
-                        name: document.getElementById('userName').value
-                    });
-                });
-                hubConn.on('data', d => {
-                    if (d.type === 'join_response') {
-                        if (d.allowed) {
-                            addSystemMsg("Host approved entry.");
-                            // Only setup connection if allowed, and it's the hub connection
-                            if (d.fromHub) setupConn(hubConn);
-                            if (d.peerList) d.peerList.forEach(pid => {
-                                if (pid !== peer.id && !connections.has(pid)) setupConn(peer.connect(pid));
-                            });
-                        }
-                        else {
-                            addSystemMsg("ENTRY DENIED: " + d.reason);
-                            hubConn.close();
-                            // Optionally, destroy peer if entry is denied to prevent further connections
-                            peer.destroy();
-                        }
-                    }
-                    else if (d.type === 'mesh_gossip') {
-                        d.ids.forEach(pid => {
-                            if (pid !== peer.id && !connections.has(pid)) setupConn(peer.connect(pid));
-                        });
-                    }
-                });
-                hubConn.on('close', () => {
-                    if (!isHost && !hubConn.remoteName) { // If not host and connection closed before intro/approval
-                        addSystemMsg("Connection to host lost or denied. Try changing rooms.");
-                    }
-                });
-
-                // Also try to become the hub peer
+                // Try to become the hub peer
                 hubPeer = new Peer(hubId, { debug: 0, secure: true });
                 hubPeer.on('open', () => {
                     isHost = true;
@@ -695,7 +659,7 @@
                                 const needsApproval = document.getElementById('requireApproval').checked;
                                 if (!needsApproval || confirm(`Admission Request: Allow "${d.name}" to join this room?`)) {
                                     const peerList = Array.from(connections.keys()).filter(id => !id.includes('-H-'));
-                                    c.send({ type: 'join_response', allowed: true, fromHub: true, peerList });
+                                    c.send({ type: 'join_response', allowed: true, peerList });
                                     setupConn(c);
                                     relayNewNode(c.peer);
                                 } else {
@@ -708,10 +672,7 @@
                 });
 
                 hubPeer.on('error', (err) => {
-                    if (err.type === 'unavailable-id') {
-                        // Hub already exists, which is fine
-                        isHost = false;
-                    }
+                    if (err.type === 'unavailable-id') isHost = false;
                 });
             });
 
@@ -751,15 +712,28 @@
         }
 
         function setupConn(c) {
-            // Prevent setting up the same connection multiple times
+            if (!c) return;
             if (connections.has(c.peer) && connections.get(c.peer) === c) return;
 
-            c.on('open', () => {
-                if (connections.has(c.peer)) return; // Check again in case of race condition
+            const init = () => {
+                if (connections.has(c.peer)) return;
                 connections.set(c.peer, c);
                 updateUI();
                 c.send({ type: 'intro', name: document.getElementById('userName').value });
-            });
+            };
+
+            const isHub = c.peer.includes('-H-');
+
+            if (c.open) {
+                if (isHub && !isHost) c.send({ type: 'join_request', name: document.getElementById('userName').value });
+                else if (!isHub) init();
+            } else {
+                c.on('open', () => {
+                    if (isHub && !isHost) c.send({ type: 'join_request', name: document.getElementById('userName').value });
+                    else if (!isHub) init();
+                });
+            }
+
             c.on('data', d => {
                 if (d.type === 'chat') addChatMsg(d.name, d.text, 'received', d.id);
                 else if (d.type === 'file') receiveFile(d);
@@ -767,8 +741,17 @@
                 else if (d.type === 'reaction') handleReactionUI(d);
                 else if (d.type === 'ping') handlePing(d.name);
                 else if (d.type === 'join_response') {
-                    if (d.allowed) { addSystemMsg("Host approved entry."); setupConn(c); }
-                    else { addSystemMsg("ENTRY DENIED: " + d.reason); c.close(); }
+                    if (d.allowed) {
+                        addSystemMsg("Host approved entry.");
+                        init();
+                        if (d.peerList) d.peerList.forEach(pid => {
+                            if (pid !== peer.id && !connections.has(pid)) setupConn(peer.connect(pid));
+                        });
+                    } else {
+                        addSystemMsg("ENTRY DENIED: " + d.reason);
+                        c.close();
+                        if (isHub) peer.destroy();
+                    }
                 }
                 else if (d.type === 'intro') {
                     const isNew = !c.remoteName;
