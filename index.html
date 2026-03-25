@@ -476,11 +476,22 @@
 
         .video-grid {
             display: grid;
+            gap: 15px;
+            width: 95%;
+            max-width: 1400px;
+            max-height: 75vh;
+            padding: 20px;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            width: 90%;
-            max-width: 1200px;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            justify-content: center;
+            align-content: center;
         }
+
+        /* Responsive Grid Adjustments */
+        .video-grid[data-count="1"] { grid-template-columns: 1fr; max-width: 800px; }
+        .video-grid[data-count="2"] { grid-template-columns: 1fr 1fr; }
+        .video-grid[data-count="3"], .video-grid[data-count="4"] { grid-template-columns: 1fr 1fr; }
+        .video-grid[data-count="5"], .video-grid[data-count="6"] { grid-template-columns: 1fr 1fr 1fr; }
 
         video {
             width: 100%;
@@ -488,15 +499,24 @@
             object-fit: cover;
             border-radius: 20px;
             background: #000;
+            display: block;
         }
 
         .video-container {
             position: relative;
+            width: 100%;
+            height: 100%;
             aspect-ratio: 16/9;
-            border-radius: 20px;
+            border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--border);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            border: 2px solid var(--border);
+            transition: transform 0.3s;
+        }
+
+        .video-container:hover {
+            transform: scale(1.02);
+            border-color: var(--primary);
         }
 
         .video-label {
@@ -504,22 +524,19 @@
             bottom: 12px;
             left: 12px;
             background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            padding: 4px 12px;
+            backdrop-filter: blur(10px);
+            padding: 6px 14px;
             border-radius: 99px;
             font-size: 0.75rem;
             color: white;
             z-index: 5;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
         }
 
-        .local-video {
-            position: absolute;
-            bottom: 40px;
-            right: 40px;
-            width: 200px !important;
-            border: 2px solid var(--primary);
-            z-index: 10;
+        .local-video-wrap {
+            border: 2px solid var(--primary) !important;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
         }
 
         .call-controls {
@@ -702,10 +719,13 @@
 
     <!-- Call Overlay -->
     <div id="callOverlay">
-        <div class="video-grid" id="remoteVideos">
+        <div class="video-grid" id="videoGrid">
+            <div class="video-container local-video-wrap" id="localVideoWrap">
+                <video id="localVideo" autoplay muted playsinline></video>
+                <div class="video-label">You (Me)</div>
+            </div>
             <!-- Remote videos will be injected here -->
         </div>
-        <video id="localVideo" class="local-video" autoplay muted playsinline></video>
         <div id="callStatus"
             style="margin-top: 20px; font-weight: bold; color: var(--text-muted); position: absolute; bottom: 120px;">
             Calling...</div>
@@ -1034,7 +1054,9 @@
             activeCalls.set(call.peer, call);
 
             document.getElementById('callOverlay').style.display = 'flex';
-            document.getElementById('callStatus').innerText = `${activeCalls.size} Participant(s)`;
+            const grid = document.getElementById('videoGrid');
+            grid.setAttribute('data-count', activeCalls.size + 1);
+            document.getElementById('callStatus').innerText = `${activeCalls.size + 1} Participant(s)`;
 
             call.on('stream', remoteStream => {
                 let container = document.getElementById('cont-' + call.peer);
@@ -1042,14 +1064,13 @@
                     container = document.createElement('div');
                     container.id = 'cont-' + call.peer;
                     container.className = 'video-container';
-
                     const peerName = (connections.get(call.peer) && connections.get(call.peer).remoteName) || 'Peer';
 
                     container.innerHTML = `
                         <video id="vid-${call.peer}" autoplay playsinline></video>
                         <div class="video-label">${peerName}</div>
                     `;
-                    document.getElementById('remoteVideos').appendChild(container);
+                    grid.appendChild(container);
                 }
                 const vid = document.getElementById('vid-' + call.peer);
                 if (vid) vid.srcObject = remoteStream;
@@ -1082,8 +1103,12 @@
             }
 
             document.getElementById('callOverlay').style.display = 'none';
-            document.getElementById('remoteVideos').innerHTML = "";
+            // Keep the local video container, but clear remotes
+            const grid = document.getElementById('videoGrid');
+            const items = grid.querySelectorAll('.video-container:not(#localVideoWrap)');
+            items.forEach(it => it.remove());
             document.getElementById('localVideo').srcObject = null;
+            grid.setAttribute('data-count', 1);
 
             // Reset buttons
             document.getElementById('micBtn').classList.remove('active');
@@ -1326,8 +1351,9 @@
         }
 
         function addReaction(msgId, emoji) {
-            connections.forEach(c => c.send({ type: 'reaction', msgId, emoji }));
-            handleReactionUI({ msgId, emoji });
+            const myName = document.getElementById('userName').value;
+            connections.forEach(c => c.send({ type: 'reaction', msgId, emoji, name: myName }));
+            handleReactionUI({ msgId, emoji, name: myName });
         }
 
         function handleReactionUI(d) {
@@ -1335,14 +1361,21 @@
             if (reactionsContainer) {
                 let chip = reactionsContainer.querySelector(`[data-emoji="${d.emoji}"]`);
                 if (chip) {
-                    let countEl = chip.querySelector('.count');
-                    let count = parseInt(countEl.innerText) + 1;
-                    countEl.innerText = count;
-                    chip.classList.add('has-count');
+                    let reactors = (chip.getAttribute('data-reactors') || "").split(', ').filter(r => r);
+                    if (!reactors.includes(d.name)) {
+                        reactors.push(d.name);
+                        chip.setAttribute('data-reactors', reactors.join(', '));
+                        chip.title = "Reacted by: " + reactors.join(', ');
+                        let countEl = chip.querySelector('.count');
+                        countEl.innerText = reactors.length;
+                        chip.classList.add('has-count');
+                    }
                 } else {
                     chip = document.createElement('div');
-                    chip.className = 'reaction-chip';
+                    chip.className = 'reaction-chip has-count';
                     chip.setAttribute('data-emoji', d.emoji);
+                    chip.setAttribute('data-reactors', d.name);
+                    chip.title = "Reacted by: " + d.name;
                     chip.innerHTML = `${d.emoji} <span class="count">1</span>`;
                     reactionsContainer.appendChild(chip);
                 }
@@ -1487,8 +1520,8 @@
                     <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '❤️')">❤️</span>
                     <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '😂')">😂</span>
                     <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '😮')">😮</span>
-                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '�')">😢</span>
-                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '🔥')">�</span>
+                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '😢')">😢</span>
+                    <span style="font-size:0.8rem; cursor:pointer;" onclick="addReaction('${id}', '🔥')">🔥</span>
                 </div>
                 ` : ''}
             `;
