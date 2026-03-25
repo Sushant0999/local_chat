@@ -413,6 +413,51 @@
             margin-top: 4px;
         }
 
+        .file-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 12px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: 0.2s;
+        }
+
+        .file-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .file-icon {
+            font-size: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+
+        .file-details {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .file-name {
+            font-weight: bold;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
         /* Call UI */
         #callOverlay {
             position: fixed;
@@ -611,6 +656,9 @@
                             onchange="localStorage.setItem('requireApproval', this.checked)">
                         🔒 Approval Req.
                     </label>
+                    <button id="downloadAllBtn" class="btn-primary"
+                        style="display:none; font-size:0.7rem; padding:6px 12px; background:var(--warning); color:black; border-radius:10px;"
+                        onclick="downloadAllFiles()">Download All Files (0)</button>
                     <button class="btn-primary"
                         style="font-size:0.7rem; padding:6px 12px; background:var(--success); border-radius:10px;"
                         onclick="startGroupCall()">Group Call</button>
@@ -841,6 +889,9 @@
                 else if (d.type === 'typing') handleTypingUI(d);
                 else if (d.type === 'reaction') handleReactionUI(d);
                 else if (d.type === 'ping') handlePing(d.name);
+                else if (d.type === 'download-notify') {
+                    addSystemMsg(`${d.user} downloaded "${d.fileName}"`);
+                }
                 else if (d.type === 'join_response') {
                     if (d.allowed) {
                         addSystemMsg("Host approved entry.");
@@ -1111,6 +1162,38 @@
             el.classList.toggle('active', d.active);
         }
 
+        let receivedFiles = [];
+
+        function triggerDownload(url, name) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            a.click();
+
+            const myName = document.getElementById('userName').value;
+            connections.forEach(c => c.send({ type: 'download-notify', fileName: name, user: myName }));
+        }
+
+        function downloadAllFiles() {
+            if (receivedFiles.length === 0) return;
+            if (confirm(`This will attempt to download ${receivedFiles.length} files. Your browser may ask for permission to download multiple files. Continue?`)) {
+                receivedFiles.forEach((f, i) => {
+                    setTimeout(() => {
+                        const a = document.createElement('a');
+                        a.href = f.url;
+                        a.download = f.name;
+                        a.click();
+                    }, i * 300); // Sequential delay
+                });
+            }
+        }
+
+        function updateDownloadAllUI() {
+            const btn = document.getElementById('downloadAllBtn');
+            btn.innerText = `Download All Files (${receivedFiles.length})`;
+            btn.style.display = receivedFiles.length > 1 ? 'block' : 'none';
+        }
+
         async function sendFiles(files) {
             if (!files || files.length === 0) return;
             for (const file of Array.from(files)) {
@@ -1201,15 +1284,30 @@
             const msgEl = document.querySelector(`[data-id="${fileId}"] .file-content`);
             if (!msgEl) return;
 
+            // Track for "Download All"
+            if (!receivedFiles.find(f => f.url === dataUrl)) {
+                receivedFiles.push({ url: dataUrl, name: name });
+                updateDownloadAllUI();
+            }
+
             let html = "";
             if (type.startsWith('image/')) {
-                html = `<div class="file-preview"><img src="${dataUrl}" onclick="window.open(this.src)"></div>`;
+                html = `<div class="file-preview"><img src="${dataUrl}" onclick="window.open(this.src)"></div>
+                        <div style="margin-top:8px"><button class="btn-primary" style="font-size:0.6rem; width:100%" onclick="triggerDownload('${dataUrl}', '${name}')">Download ${name}</button></div>`;
             } else {
-                html = `<div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${dataUrl}'; a.download='${name}'; a.click();">Download ${name}</button></div>`;
+                html = `
+                    <div class="file-card">
+                        <div class="file-icon">📄</div>
+                        <div class="file-details">
+                            <div class="file-name">${name}</div>
+                            <div class="file-meta">${type} • Ready</div>
+                        </div>
+                        <button class="btn-primary" style="font-size:0.6rem; padding:8px" onclick="triggerDownload('${dataUrl}', '${name}')">Download</button>
+                    </div>
+                `;
             }
             msgEl.innerHTML = html;
 
-            // Remove progress bar
             const progressContainer = document.querySelector(`[data-id="${fileId}"] .progress-container`);
             if (progressContainer) progressContainer.remove();
         }
