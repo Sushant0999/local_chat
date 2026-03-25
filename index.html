@@ -1205,7 +1205,7 @@
             if (type.startsWith('image/')) {
                 html = `<div class="file-preview"><img src="${dataUrl}" onclick="window.open(this.src)"></div>`;
             } else {
-                html = `<div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${dataUrl}'; a.download='${name}'; a.click();">Download File</button></div>`;
+                html = `<div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${dataUrl}'; a.download='${name}'; a.click();">Download ${name}</button></div>`;
             }
             msgEl.innerHTML = html;
 
@@ -1367,7 +1367,7 @@
                 if (fileData.fileType && fileData.fileType.startsWith('image/')) {
                     contentHtml = `<div class="file-content"><div>${t}</div><div class="file-preview"><img src="${fileData.fileData}" onclick="window.open(this.src)"></div></div>`;
                 } else {
-                    contentHtml = `<div class="file-content"><div>${t}</div><div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${fileData.fileData}'; a.download='${fileData.fileName}'; a.click();">Download File</button></div></div>`;
+                    contentHtml = `<div class="file-content"><div>${t}</div><div style="margin-top:5px"><button class="btn-primary" style="font-size:0.6rem" onclick="const a=document.createElement('a'); a.href='${fileData.fileData}'; a.download='${fileData.fileName}'; a.click();">Download ${fileData.fileName}</button></div></div>`;
                 }
             } else if (fileData && fileData.isStreaming) {
                 contentHtml = `
@@ -1409,6 +1409,10 @@
 
         init();
         function openOfflineSub() { window.open(`https://ntfy.sh/antigravity_p2p_${myShortId}`, '_blank'); }
+
+        window.onbeforeunload = function() {
+            return "Are you sure you want to leave the chat room? Refreshing will close all your active peer connections.";
+        };
     </script>
 </body>
 
