@@ -640,7 +640,7 @@
             </div>
 
             <div class="input-bar">
-                <input type="file" id="fileInput" style="display:none" onchange="sendFile(this.files[0])">
+                <input type="file" id="fileInput" style="display:none" multiple onchange="sendFiles(this.files)">
                 <button class="btn-primary" onclick="document.getElementById('fileInput').click()"
                     style="padding: 14px; border-radius: 50%;">📎</button>
                 <button class="btn-primary" onclick="toggleGiphy()"
@@ -1111,10 +1111,18 @@
             el.classList.toggle('active', d.active);
         }
 
+        async function sendFiles(files) {
+            if (!files || files.length === 0) return;
+            for (const file of Array.from(files)) {
+                await sendFile(file);
+            }
+            document.getElementById('fileInput').value = ''; // Reset
+        }
+
         async function sendFile(file) {
             if (!file) return;
             const myName = document.getElementById('userName').value;
-            const fileId = 'F' + Date.now();
+            const fileId = 'F' + Date.now() + Math.random().toString(36).substring(2, 6);
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
             addChatMsg("You", `Sending: ${file.name}`, 'sent', fileId, {
