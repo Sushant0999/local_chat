@@ -676,7 +676,10 @@
                     <button id="downloadAllBtn" class="btn-primary"
                         style="display:none; font-size:0.7rem; padding:6px 12px; background:var(--warning); color:black; border-radius:10px;"
                         onclick="downloadAllFiles()">Download All Files (0)</button>
-                    <button class="btn-primary"
+                    <button class="btn-primary" 
+                        style="font-size:0.7rem; padding:6px 12px; background:var(--primary); border-radius:10px;"
+                        onclick="copyInviteLink()">Copy Link</button>
+                    <button class="btn-primary" 
                         style="font-size:0.7rem; padding:6px 12px; background:var(--success); border-radius:10px;"
                         onclick="startGroupCall()">Group Call</button>
                     <button class="btn-primary" style="font-size:0.7rem; padding:6px 12px;"
@@ -759,9 +762,22 @@
 
         async function init() {
             try {
+                // Check if room is in URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlRoom = urlParams.get('room');
+
                 const res = await fetch('https://api.ipify.org?format=json').catch(() => null);
                 const data = res ? await res.json() : null;
-                const networkKey = (data && data.ip) ? data.ip.replace(/\./g, '-') : "LAN-" + Math.floor(1000 + Math.random() * 9000);
+                
+                let networkKey;
+                if (urlRoom) {
+                    networkKey = urlRoom.toUpperCase().replace(/[^A-Z0-9]/g, '-');
+                    addSystemMsg(`Using room from URL: ${networkKey}`);
+                } else {
+                    networkKey = (data && data.ip) ? data.ip.replace(/\./g, '-') : "LAN-" + Math.floor(1000 + Math.random() * 9000);
+                    if (!data) addSystemMsg("Public IP detection failed. Sharing local-only Sync ID.");
+                }
+
                 document.getElementById('ipTag').innerText = `Sync ID: ${networkKey}`;
                 startP2P(networkKey);
 
@@ -808,7 +824,19 @@
             const myId = `${APP_KEY}-N-${networkKey}-${myShortId}`;
             const hubId = `${APP_KEY}-H-${networkKey}`;
 
-            peer = new Peer(myId, { debug: 1, secure: true, config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] } });
+            peer = new Peer(myId, { 
+                debug: 1, 
+                secure: true, 
+                config: { 
+                    'iceServers': [
+                        { 'urls': 'stun:stun.l.google.com:19302' },
+                        { 'urls': 'stun:stun1.l.google.com:19302' },
+                        { 'urls': 'stun:stun2.l.google.com:19302' },
+                        { 'urls': 'stun:stun3.l.google.com:19302' },
+                        { 'urls': 'stun:stun4.l.google.com:19302' }
+                    ] 
+                } 
+            });
 
             peer.on('open', (id) => {
                 const hubConn = peer.connect(hubId);
@@ -825,6 +853,8 @@
                                 const needsApproval = document.getElementById('requireApproval').checked;
                                 if (!needsApproval || confirm(`Admission Request: Allow "${d.name}" to join this room?`)) {
                                     const peerList = Array.from(connections.keys()).filter(id => !id.includes('-H-'));
+                                    // CRITICAL: Host must include its own Node ID so clients can connect to it!
+                                    peerList.push(peer.id);
                                     c.send({ type: 'join_response', allowed: true, peerList });
                                     setupConn(c);
                                     relayNewNode(c.peer);
@@ -991,8 +1021,21 @@
         }
 
         function joinRoom(roomKey) {
-            if (peer) peer.destroy();
-            if (hubPeer) hubPeer.destroy();
+            if (peer) {
+                peer.off('error');
+                peer.off('open');
+                peer.off('connection');
+                peer.destroy();
+                peer = null;
+            }
+            if (hubPeer) {
+                hubPeer.off('error');
+                hubPeer.off('open');
+                hubPeer.off('connection');
+                hubPeer.destroy();
+                hubPeer = null;
+            }
+            connections.forEach(c => c.close());
             connections.clear();
             updateUI();
 
@@ -1455,6 +1498,17 @@
             const blob = new Blob([log], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = 'mesh_log.txt'; a.click();
+        }
+
+        function copyInviteLink() {
+            const roomKey = document.getElementById('ipTag').innerText.replace('Sync ID: ', '');
+            const url = new URL(window.location.href);
+            url.searchParams.set('room', roomKey);
+            navigator.clipboard.writeText(url.toString()).then(() => {
+                addSystemMsg("Invite link copied to clipboard!");
+            }).catch(() => {
+                alert("Failed to copy link. Room ID: " + roomKey);
+            });
         }
 
         function updateUI() {
