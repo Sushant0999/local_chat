@@ -35,10 +35,11 @@ Local Chat is a modern, serverless, peer-to-peer messaging application built wit
 - **Admission Control**: Hosts can enable "Approval Required" mode to gate keep new entrants.
 - **Serverless**: Zero data is stored on any server; communication is direct browser-to-browser.
 
-### 🎨 Premium Aesthetics
+### 🎨 Premium Aesthetics & Mobile Responsiveness
 - **Dynamic Room Themes**: Every room gets a unique color scheme based on its ID.
 - **Modern UI**: Sleek dark mode design with glassmorphism and smooth animations.
-- **Responsive Design**: Works seamlessly across desktop and mobile devices.
+- **Adaptive Mobile Layout**: Full-height chat on mobile with smooth slide-in peer drawer, backdrop blur, live online badge, and touch-optimized controls.
+- **Responsive Video Calling**: Dynamic portrait and landscape grid adjustments so video feeds stay sharp and legible on phones, tablets, and desktops.
 
 ## 🛠️ How to Use
 1. Open the application in your browser.

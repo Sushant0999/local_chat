@@ -54,51 +54,6 @@
             box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
         }
 
-        @media (max-width: 900px) {
-            body {
-                padding: 0;
-            }
-
-            .container {
-                grid-template-columns: 1fr;
-                height: 100%;
-                border-radius: 0;
-                border: none;
-                grid-template-rows: auto 1fr;
-            }
-
-            .sidebar {
-                border-right: none !important;
-                border-bottom: 1px solid var(--border);
-                padding: 16px !important;
-                flex-direction: row !important;
-                height: auto !important;
-                overflow-x: auto;
-                gap: 16px !important;
-            }
-
-            .sidebar-hide-mobile {
-                display: none !important;
-            }
-
-            .peer-list {
-                flex: none !important;
-                display: flex !important;
-                flex-direction: row !important;
-                gap: 8px;
-            }
-
-            .peer-card {
-                flex-shrink: 0;
-                margin-bottom: 0 !important;
-                min-width: 140px;
-            }
-
-            .input-bar {
-                padding: 12px 16px env(safe-area-inset-bottom, 12px) !important;
-            }
-        }
-
         .sidebar {
             padding: 32px;
             border-right: 1px solid var(--border);
@@ -107,6 +62,65 @@
             gap: 24px;
             background: rgba(0, 0, 0, 0.2);
             height: 100%;
+            overflow-y: auto;
+        }
+
+        .sidebar-header-mobile {
+            display: none;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+        }
+
+        .btn-sidebar-toggle {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid var(--primary);
+            color: white;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: 0.2s;
+        }
+
+        .btn-sidebar-toggle:hover {
+            background: rgba(99, 102, 241, 0.3);
+        }
+
+        .mobile-badge {
+            background: var(--primary);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 2px 7px;
+            border-radius: 99px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .close-sidebar-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid var(--border);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0;
+            transition: 0.2s;
+        }
+
+        .close-sidebar-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .status-card {
@@ -197,15 +211,96 @@
             background: rgba(0, 0, 0, 0.1);
             height: 100%;
             overflow: hidden;
+            position: relative;
+            min-width: 0;
         }
 
         .header {
-            padding: 20px 32px;
+            padding: 16px 28px;
             border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
+            gap: 16px;
+        }
+
+        .header-main {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .room-title-block {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .room-title-block h3 {
+            font-size: 1.1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .room-status-sub {
+            font-size: 0.7rem;
+            color: var(--success);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        .btn-header-action {
+            font-size: 0.7rem;
+            padding: 6px 12px;
+            border-radius: 10px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .header-user-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .header-nick-input {
+            width: 85px;
+            padding: 6px 10px !important;
+            font-size: 0.8rem !important;
+            border-radius: 10px !important;
+            flex: none !important;
+        }
+
+        .approval-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            cursor: pointer;
+            user-select: none;
         }
 
         #messages {
@@ -237,6 +332,8 @@
             font-size: 0.95rem;
             position: relative;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            word-break: break-word;
+            overflow-wrap: break-word;
         }
 
         .msg.sent {
@@ -623,16 +720,19 @@
             transform: scale(1.08) rotate(180deg);
         }
 
-        @media (max-width: 600px) {
-            .call-controls {
-                gap: 12px;
-                bottom: 24px;
-            }
-            .btn-round {
-                width: 52px;
-                height: 52px;
-                font-size: 1.3rem;
-            }
+        .call-status {
+            font-weight: bold;
+            color: var(--text-muted);
+            position: absolute;
+            top: 24px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 6px 16px;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85rem;
+            z-index: 12;
+            pointer-events: none;
         }
 
         /* Giphy UI */
@@ -676,16 +776,236 @@
             transform: scale(1.03);
             border-color: var(--primary);
         }
+
+        /* Global Responsive Media Queries */
+        @media (max-width: 900px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr;
+                height: 100dvh;
+                border-radius: 0;
+                border: none;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: min(85vw, 340px);
+                height: 100dvh !important;
+                background: rgba(13, 17, 28, 0.98) !important;
+                backdrop-filter: blur(25px);
+                -webkit-backdrop-filter: blur(25px);
+                z-index: 500;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 10px 0 40px rgba(0, 0, 0, 0.7);
+                display: flex !important;
+                flex-direction: column !important;
+                padding: 20px !important;
+                gap: 16px !important;
+                border-right: 1px solid var(--border);
+                overflow-y: auto !important;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-backdrop {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.65);
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                z-index: 499;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+
+            .sidebar-backdrop.open {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .sidebar-header-mobile {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding-bottom: 12px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .btn-sidebar-toggle {
+                display: inline-flex;
+            }
+
+            .header {
+                padding: 10px 14px;
+                flex-direction: column;
+                gap: 8px;
+                align-items: stretch;
+            }
+
+            .header-main {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .header-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                overflow-x: auto;
+                width: 100%;
+                padding-bottom: 3px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+            }
+
+            .header-actions::-webkit-scrollbar {
+                display: none;
+            }
+
+            #messages {
+                padding: 14px 16px;
+                gap: 12px;
+            }
+
+            .msg {
+                max-width: 88%;
+                padding: 10px 14px;
+                font-size: 0.9rem;
+            }
+
+            .file-preview {
+                max-width: 100%;
+            }
+
+            .input-bar {
+                padding: 10px 14px max(10px, env(safe-area-inset-bottom, 10px));
+                gap: 8px;
+            }
+
+            .giphy-panel {
+                left: 12px;
+                right: 12px;
+                bottom: 75px;
+                padding: 14px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .header-nick-input {
+                width: 70px;
+                font-size: 0.75rem !important;
+            }
+
+            .btn-header-action {
+                font-size: 0.65rem;
+                padding: 5px 10px;
+                height: 28px;
+            }
+
+            .input-bar {
+                padding: 8px 10px max(8px, env(safe-area-inset-bottom, 8px));
+                gap: 6px;
+            }
+
+            .input-bar .btn-round-input {
+                width: 40px !important;
+                height: 40px !important;
+                padding: 0 !important;
+                border-radius: 50% !important;
+                font-size: 1.1rem;
+                flex-shrink: 0;
+            }
+
+            .input-bar input[type="text"] {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+
+            .input-bar .btn-send {
+                padding: 10px 14px;
+                font-size: 0.85rem;
+                flex-shrink: 0;
+            }
+
+            .video-grid {
+                width: 100%;
+                max-height: 68vh;
+                padding: 10px;
+                gap: 10px;
+                overflow-y: auto;
+            }
+
+            .video-grid[data-count="1"] {
+                grid-template-columns: 1fr;
+                max-width: 100%;
+            }
+
+            .video-grid[data-count="2"] {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1fr;
+            }
+
+            .video-grid[data-count="3"], .video-grid[data-count="4"] {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .video-container {
+                aspect-ratio: 4/3;
+                border-radius: 16px;
+            }
+
+            .call-controls {
+                gap: 12px;
+                bottom: max(20px, env(safe-area-inset-bottom, 20px));
+            }
+
+            .btn-round {
+                width: 52px;
+                height: 52px;
+                font-size: 1.25rem;
+            }
+
+            .call-status {
+                top: max(16px, env(safe-area-inset-top, 16px));
+                font-size: 0.75rem;
+                padding: 4px 12px;
+            }
+        }
     </style>
 </head>
 
 <body>
 
+    <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+
     <div class="container" id="appShell">
-        <div class="sidebar">
-            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header-mobile">
+                <span style="font-weight:bold; font-size:0.85rem; color:var(--text);">Nearby Network Peers</span>
+                <button class="close-sidebar-btn" onclick="toggleSidebar(false)" title="Close Sidebar">✕</button>
+            </div>
+            <div style="display: flex; justify-content: center; margin-bottom: 12px;">
                 <img src="logo.png" alt="Local Chat Logo"
-                    style="width: 120px; height: auto; border-radius: 12px; filter: drop-shadow(0 0 10px var(--primary));">
+                    style="width: 110px; height: auto; border-radius: 12px; filter: drop-shadow(0 0 10px var(--primary));">
             </div>
             <div class="status-card">
                 <h2 id="meshCount">0 Peers Online</h2>
@@ -698,8 +1018,7 @@
                     SCANNING</div>
             </div>
             <div class="peer-list">
-                <label class="sidebar-hide-mobile"
-                    style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Nearby
+                <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Nearby
                     Peers</label>
                 <div id="peerStack" style="padding-top:10px">
                     <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Waiting
@@ -715,38 +1034,45 @@
 
         <div class="chat-area">
             <div class="header">
-                <div>
-                    <h3 id="roomName">P2P Secure Mesh</h3>
-                    <div style="font-size: 0.7rem; color: var(--success); margin-top: 4px;">• Status: Encryption Active
+                <div class="header-main">
+                    <button id="sidebarToggleBtn" class="btn-sidebar-toggle" onclick="toggleSidebar()" title="View Online Peers">
+                        <span>👥 Peers</span>
+                        <span id="mobilePeerBadge" class="mobile-badge">0</span>
+                    </button>
+                    <div class="room-title-block">
+                        <h3 id="roomName">P2P Secure Mesh</h3>
+                        <div class="room-status-sub">• Status: Encryption Active</div>
+                    </div>
+                    <div class="header-user-badge">
+                        <span style="font-size:0.75rem; color:var(--text-muted)">Me:</span>
+                        <input type="text" id="userName" placeholder="Nick"
+                            onchange="localStorage.setItem('chatName', this.value)"
+                            class="header-nick-input">
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:10px">
-                    <label
-                        style="font-size: 0.65rem; color: var(--text-muted); display:flex; align-items:center; gap:4px">
+
+                <div class="header-actions">
+                    <label class="approval-label" title="Require approval for joining">
                         <input type="checkbox" id="requireApproval"
                             onchange="localStorage.setItem('requireApproval', this.checked)">
-                        🔒 Approval Req.
+                        🔒 Approval
                     </label>
-                    <button id="downloadAllBtn" class="btn-primary"
-                        style="display:none; font-size:0.7rem; padding:6px 12px; background:var(--warning); color:black; border-radius:10px;"
+                    <button id="downloadAllBtn" class="btn-primary btn-header-action"
+                        style="display:none; background:var(--warning); color:black;"
                         onclick="downloadAllFiles()">Download All Files (0)</button>
-                    <button class="btn-primary" 
-                        style="font-size:0.7rem; padding:6px 12px; background:var(--primary); border-radius:10px;"
-                        onclick="copyInviteLink()">Copy Link</button>
-                    <button class="btn-primary" 
-                        style="font-size:0.7rem; padding:6px 12px; background:var(--success); border-radius:10px;"
-                        onclick="startGroupCall()">Group Call</button>
-                    <button id="camModeHeaderBtn" class="btn-primary" 
-                        style="font-size:0.7rem; padding:6px 12px; background:rgba(255,255,255,0.08); border:1px solid var(--border); border-radius:10px; display:inline-flex; align-items:center; gap:5px;"
+                    <button class="btn-primary btn-header-action" 
+                        style="background:var(--primary);"
+                        onclick="copyInviteLink()" title="Copy Invite Link">🔗 Link</button>
+                    <button class="btn-primary btn-header-action" 
+                        style="background:var(--success);"
+                        onclick="startGroupCall()" title="Start Group Call">📞 Call</button>
+                    <button id="camModeHeaderBtn" class="btn-primary btn-header-action" 
+                        style="background:rgba(255,255,255,0.08); border:1px solid var(--border);"
                         onclick="toggleCameraPreference()" title="Default Camera (Click to switch Front / Rear)">
                         <span>📷</span> <span id="camModeText">Front</span>
                     </button>
-                    <button class="btn-primary" style="font-size:0.7rem; padding:6px 12px;"
-                        onclick="exportChat()">Export (.txt)</button>
-                    <span style="font-size:0.75rem; color:var(--text-muted)">Me:</span>
-                    <input type="text" id="userName" placeholder="Nick"
-                        onchange="localStorage.setItem('chatName', this.value)"
-                        style="width:100px; padding:6px 12px; font-size:0.8rem; border-radius:10px; flex:none;">
+                    <button class="btn-primary btn-header-action" style="background:rgba(255,255,255,0.08); border:1px solid var(--border);"
+                        onclick="exportChat()" title="Export Chat History">📥 Export</button>
                 </div>
             </div>
 
@@ -768,13 +1094,13 @@
 
             <div class="input-bar">
                 <input type="file" id="fileInput" style="display:none" multiple onchange="sendFiles(this.files)">
-                <button class="btn-primary" onclick="document.getElementById('fileInput').click()"
+                <button class="btn-primary btn-round-input" onclick="document.getElementById('fileInput').click()"
                     style="padding: 14px; border-radius: 50%;">📎</button>
-                <button class="btn-primary" onclick="toggleGiphy()"
+                <button class="btn-primary btn-round-input" onclick="toggleGiphy()"
                     style="padding: 14px; border-radius: 50%; background: #ff6b6b">🎬</button>
                 <input type="text" id="chatInput" placeholder="Write a message..."
                     onkeypress="if(event.key==='Enter') sendAll()" oninput="sendTyping()">
-                <button class="btn-primary" onclick="sendAll()">Send</button>
+                <button class="btn-primary btn-send" onclick="sendAll()">Send</button>
             </div>
         </div>
     </div>
@@ -796,9 +1122,7 @@
             </div>
             <!-- Remote videos will be injected here -->
         </div>
-        <div id="callStatus"
-            style="margin-top: 20px; font-weight: bold; color: var(--text-muted); position: absolute; bottom: 120px;">
-            Calling...</div>
+        <div id="callStatus" class="call-status">Calling...</div>
         <div class="call-controls">
             <button id="micBtn" class="btn-round btn-mute" onclick="toggleMic()" title="Mute/Unmute Mic">🎤</button>
             <button class="btn-round btn-hangup" onclick="endCall()" title="End Call">📞</button>
@@ -827,6 +1151,16 @@
             let hash = 0;
             for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
             return `hsl(${Math.abs(hash) % 360}, 65%, 45%)`;
+        }
+
+        function toggleSidebar(forceState) {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            if (!sidebar) return;
+            const isCurrentlyOpen = sidebar.classList.contains('open');
+            const newState = typeof forceState === 'boolean' ? forceState : !isCurrentlyOpen;
+            sidebar.classList.toggle('open', newState);
+            if (backdrop) backdrop.classList.toggle('open', newState);
         }
 
         async function init() {
@@ -1311,6 +1645,7 @@
         }
 
         async function startGroupCall() {
+            toggleSidebar(false);
             if (connections.size === 0) return alert("No peers online to call!");
 
             try {
@@ -1332,6 +1667,7 @@
         }
 
         async function startCall(remoteId, video = true) {
+            toggleSidebar(false);
             try {
                 if (!localStream) {
                     addSystemMsg(`REQUESTING CAMERA/MIC...`);
@@ -1515,7 +1851,7 @@
         function updateDownloadAllUI() {
             const btn = document.getElementById('downloadAllBtn');
             btn.innerText = `Download All Files (${receivedFiles.length})`;
-            btn.style.display = receivedFiles.length > 1 ? 'block' : 'none';
+            btn.style.display = receivedFiles.length > 1 ? 'inline-flex' : 'none';
         }
 
         async function sendFiles(files) {
@@ -1791,6 +2127,8 @@
                 l.appendChild(d);
             });
             document.getElementById('meshCount').innerText = `${count} Peers Online`;
+            const mobileBadge = document.getElementById('mobilePeerBadge');
+            if (mobileBadge) mobileBadge.innerText = count;
             updateGroupBtn();
             if (count === 0) l.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.75rem;">Waiting for devices...</div>`;
         }
