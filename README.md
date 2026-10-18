@@ -20,7 +20,9 @@ Local Chat is a modern, serverless, peer-to-peer messaging application built wit
 ### 🎥 Multimedia Communication
 - **Voice & Video Calls**: High-quality P2P audio/video communication.
 - **Group Video Calls**: Supports multiple participants with a dynamic grid layout.
-- **In-Call Controls**: Toggle Microphone, Toggle Camera, and Hang up options.
+- **Front & Rear Camera Switching**: Instant camera flip between front (user) and rear (environment) cameras with uninterrupted audio and live WebRTC track replacement.
+- **In-Call Controls**: Toggle Microphone, Toggle Camera, Flip Camera, and Hang up options.
+- **Dynamic Mirroring & Labels**: Auto-mirrors front selfie view while keeping rear view natural, with live camera mode tags.
 - **Remote Labels**: Participants' names are displayed directly on their video feeds.
 
 ### 📂 Secure File Sharing

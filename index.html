@@ -537,6 +537,40 @@
         .local-video-wrap {
             border: 2px solid var(--primary) !important;
             box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            position: relative;
+        }
+
+        #localVideo.mirror-video {
+            transform: scaleX(-1);
+        }
+
+        .flip-cam-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 6;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .flip-cam-btn:hover {
+            background: var(--primary);
+            transform: scale(1.1) rotate(180deg);
+            border-color: transparent;
+        }
+
+        .flip-cam-btn:active {
+            transform: scale(0.95) rotate(180deg);
         }
 
         .call-controls {
@@ -579,6 +613,26 @@
         .btn-mute.active {
             background: #ef4444;
             border-color: #ef4444;
+        }
+
+        #switchCamBtn {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+        }
+
+        #switchCamBtn:hover {
+            transform: scale(1.08) rotate(180deg);
+        }
+
+        @media (max-width: 600px) {
+            .call-controls {
+                gap: 12px;
+                bottom: 24px;
+            }
+            .btn-round {
+                width: 52px;
+                height: 52px;
+                font-size: 1.3rem;
+            }
         }
 
         /* Giphy UI */
@@ -682,6 +736,11 @@
                     <button class="btn-primary" 
                         style="font-size:0.7rem; padding:6px 12px; background:var(--success); border-radius:10px;"
                         onclick="startGroupCall()">Group Call</button>
+                    <button id="camModeHeaderBtn" class="btn-primary" 
+                        style="font-size:0.7rem; padding:6px 12px; background:rgba(255,255,255,0.08); border:1px solid var(--border); border-radius:10px; display:inline-flex; align-items:center; gap:5px;"
+                        onclick="toggleCameraPreference()" title="Default Camera (Click to switch Front / Rear)">
+                        <span>📷</span> <span id="camModeText">Front</span>
+                    </button>
                     <button class="btn-primary" style="font-size:0.7rem; padding:6px 12px;"
                         onclick="exportChat()">Export (.txt)</button>
                     <span style="font-size:0.75rem; color:var(--text-muted)">Me:</span>
@@ -724,8 +783,16 @@
     <div id="callOverlay">
         <div class="video-grid" id="videoGrid">
             <div class="video-container local-video-wrap" id="localVideoWrap">
-                <video id="localVideo" autoplay muted playsinline></video>
-                <div class="video-label">You (Me)</div>
+                <video id="localVideo" class="mirror-video" autoplay muted playsinline></video>
+                <div class="video-label" id="localVideoLabel">You (Front)</div>
+                <button id="flipCamFloatingBtn" class="flip-cam-btn" onclick="switchCamera()" title="Switch Front/Rear Camera">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 10c0-4.4-3.6-8-8-8s-8 3.6-8 8c0 2.2.9 4.2 2.3 5.7L4 18"/>
+                        <path d="M4 14c0 4.4 3.6 8 8 8s8-3.6 8-8c0-2.2-.9-4.2-2.3-5.7L20 6"/>
+                        <polyline points="1 10 4 10 4 7"/>
+                        <polyline points="23 14 20 14 20 17"/>
+                    </svg>
+                </button>
             </div>
             <!-- Remote videos will be injected here -->
         </div>
@@ -733,9 +800,10 @@
             style="margin-top: 20px; font-weight: bold; color: var(--text-muted); position: absolute; bottom: 120px;">
             Calling...</div>
         <div class="call-controls">
-            <button id="micBtn" class="btn-round btn-mute" onclick="toggleMic()">🎤</button>
-            <button class="btn-round btn-hangup" onclick="endCall()">📞</button>
-            <button id="camBtn" class="btn-round btn-mute" onclick="toggleCam()">📷</button>
+            <button id="micBtn" class="btn-round btn-mute" onclick="toggleMic()" title="Mute/Unmute Mic">🎤</button>
+            <button class="btn-round btn-hangup" onclick="endCall()" title="End Call">📞</button>
+            <button id="camBtn" class="btn-round btn-mute" onclick="toggleCam()" title="Camera On/Off">📷</button>
+            <button id="switchCamBtn" class="btn-round btn-mute" onclick="switchCamera()" title="Switch Front/Rear Camera">🔄</button>
         </div>
     </div>
 
@@ -746,6 +814,7 @@
         let connections = new Map();
         let activeCalls = new Map(); // peerId -> call object
         let localStream = null;
+        let currentFacingMode = localStorage.getItem('preferredFacingMode') || 'user'; // 'user' (front) or 'environment' (rear)
         let isHost = false;
         let fileChunks = {}; // { fileId: { chunks: [], received: 0, total: 0 } }
         let myShortId = sessionStorage.getItem('p2pId') || Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -784,6 +853,8 @@
                 // Initialize approval checkbox state
                 const approvalChecked = localStorage.getItem('requireApproval') === 'true';
                 document.getElementById('requireApproval').checked = approvalChecked;
+
+                updateCamToggleUI();
 
             } catch (err) { console.error(err); }
         }
@@ -893,8 +964,7 @@
             if (activeCalls.size > 0 || confirm(`Incoming call from ${peerName}. Answer?`)) {
                 try {
                     if (!localStream) {
-                        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                        document.getElementById('localVideo').srcObject = localStream;
+                        await setupLocalStream(true);
                     }
                     call.answer(localStream);
                     setupCall(call);
@@ -1053,13 +1123,199 @@
         }
 
         // --- Call Features ---
+        async function getCameraStream(facingMode) {
+            // 1. Try exact facingMode constraint
+            try {
+                return await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: facingMode } },
+                    audio: false
+                });
+            } catch (e1) {
+                // 2. Try ideal facingMode constraint
+                try {
+                    return await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { ideal: facingMode } },
+                        audio: false
+                    });
+                } catch (e2) {
+                    // 3. Fallback: enumerate videoinput devices (e.g. desktop external vs internal webcam)
+                    const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+                    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                    if (videoDevices.length > 1) {
+                        const keyword = facingMode === 'environment'
+                            ? /(back|rear|environment|external|world|outward)/i
+                            : /(front|user|facetime|integrated|internal|selfie)/i;
+                        const matched = videoDevices.find(d => keyword.test(d.label));
+                        const targetDevice = matched || (facingMode === 'environment' ? videoDevices[1] : videoDevices[0]);
+                        if (targetDevice && targetDevice.deviceId) {
+                            return await navigator.mediaDevices.getUserMedia({
+                                video: { deviceId: { exact: targetDevice.deviceId } },
+                                audio: false
+                            });
+                        }
+                    }
+                    // 4. Default video fallback
+                    return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                }
+            }
+        }
+
+        async function setupLocalStream(videoWanted = true) {
+            if (localStream) return localStream;
+            let videoConstraint = false;
+            if (videoWanted) {
+                videoConstraint = { facingMode: { ideal: currentFacingMode } };
+            }
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: videoConstraint,
+                    audio: true
+                });
+            } catch (err) {
+                if (videoWanted) {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true
+                    });
+                } else {
+                    throw err;
+                }
+            }
+
+            updateLocalVideoPreview();
+            return localStream;
+        }
+
+        function updateLocalVideoPreview() {
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo && localStream) {
+                localVideo.srcObject = localStream;
+                if (currentFacingMode === 'user') {
+                    localVideo.classList.add('mirror-video');
+                } else {
+                    localVideo.classList.remove('mirror-video');
+                }
+            }
+            updateCamToggleUI();
+        }
+
+        function updateCamToggleUI() {
+            const isFront = currentFacingMode === 'user';
+            const modeText = isFront ? 'Front' : 'Rear';
+            const headerText = document.getElementById('camModeText');
+            if (headerText) headerText.innerText = modeText;
+
+            const switchBtn = document.getElementById('switchCamBtn');
+            if (switchBtn) {
+                switchBtn.title = `Switch Camera (Current: ${modeText})`;
+            }
+
+            const floatBtn = document.getElementById('flipCamFloatingBtn');
+            if (floatBtn) {
+                floatBtn.title = `Switch to ${isFront ? 'Rear' : 'Front'} Camera`;
+            }
+
+            const localLabel = document.getElementById('localVideoLabel');
+            if (localLabel) {
+                localLabel.innerText = `You (${modeText})`;
+            }
+        }
+
+        async function toggleCameraPreference() {
+            if (localStream) {
+                await switchCamera();
+            } else {
+                currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+                localStorage.setItem('preferredFacingMode', currentFacingMode);
+                updateCamToggleUI();
+                addSystemMsg(`Camera set to ${currentFacingMode === 'user' ? 'Front' : 'Rear'} camera`);
+            }
+        }
+
+        async function switchCamera() {
+            const targetMode = currentFacingMode === 'user' ? 'environment' : 'user';
+
+            // If not currently in a call, just toggle preference
+            if (!localStream) {
+                currentFacingMode = targetMode;
+                localStorage.setItem('preferredFacingMode', currentFacingMode);
+                updateCamToggleUI();
+                addSystemMsg(`Camera set to ${currentFacingMode === 'user' ? 'Front' : 'Rear'} camera`);
+                return;
+            }
+
+            const currentVideoTrack = localStream.getVideoTracks()[0];
+            if (!currentVideoTrack) {
+                alert("No active video track to switch.");
+                return;
+            }
+
+            const switchBtn = document.getElementById('switchCamBtn');
+            const floatBtn = document.getElementById('flipCamFloatingBtn');
+            if (switchBtn) {
+                switchBtn.disabled = true;
+                switchBtn.style.opacity = '0.5';
+            }
+            if (floatBtn) {
+                floatBtn.disabled = true;
+                floatBtn.style.opacity = '0.5';
+            }
+
+            try {
+                const tempStream = await getCameraStream(targetMode);
+                const newVideoTrack = tempStream.getVideoTracks()[0];
+                if (!newVideoTrack) {
+                    throw new Error("No video track found on alternate camera.");
+                }
+
+                // Preserve mute/enabled state
+                newVideoTrack.enabled = currentVideoTrack.enabled;
+
+                // Seamlessly swap video track on all active WebRTC peer connections
+                const replacePromises = [];
+                activeCalls.forEach(call => {
+                    if (call.peerConnection) {
+                        const senders = call.peerConnection.getSenders();
+                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                        if (videoSender) {
+                            replacePromises.push(videoSender.replaceTrack(newVideoTrack));
+                        }
+                    }
+                });
+                await Promise.all(replacePromises);
+
+                // Stop old track and swap into local stream
+                currentVideoTrack.stop();
+                localStream.removeTrack(currentVideoTrack);
+                localStream.addTrack(newVideoTrack);
+
+                currentFacingMode = targetMode;
+                localStorage.setItem('preferredFacingMode', currentFacingMode);
+
+                updateLocalVideoPreview();
+                addSystemMsg(`Switched to ${currentFacingMode === 'user' ? 'Front' : 'Rear'} camera`);
+            } catch (err) {
+                console.error("Camera switch error:", err);
+                alert("Could not switch camera: " + (err.message || "Device not available"));
+            } finally {
+                if (switchBtn) {
+                    switchBtn.disabled = false;
+                    switchBtn.style.opacity = '1';
+                }
+                if (floatBtn) {
+                    floatBtn.disabled = false;
+                    floatBtn.style.opacity = '1';
+                }
+            }
+        }
+
         async function startGroupCall() {
             if (connections.size === 0) return alert("No peers online to call!");
 
             try {
                 if (!localStream) {
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                    document.getElementById('localVideo').srcObject = localStream;
+                    await setupLocalStream(true);
                 }
                 document.getElementById('callOverlay').style.display = 'flex';
 
@@ -1079,8 +1335,7 @@
             try {
                 if (!localStream) {
                     addSystemMsg(`REQUESTING CAMERA/MIC...`);
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: video, audio: true });
-                    document.getElementById('localVideo').srcObject = localStream;
+                    await setupLocalStream(video);
                 }
                 document.getElementById('callOverlay').style.display = 'flex';
 
@@ -1158,6 +1413,7 @@
             document.getElementById('camBtn').classList.remove('active');
             document.getElementById('micBtn').innerText = '🎤';
             document.getElementById('camBtn').innerText = '📷';
+            updateCamToggleUI();
         }
 
         function toggleMic() {
