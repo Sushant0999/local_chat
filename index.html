@@ -1066,11 +1066,6 @@
                     <button class="btn-primary btn-header-action" 
                         style="background:var(--success);"
                         onclick="startGroupCall()" title="Start Group Call">📞 Call</button>
-                    <button id="camModeHeaderBtn" class="btn-primary btn-header-action" 
-                        style="background:rgba(255,255,255,0.08); border:1px solid var(--border);"
-                        onclick="toggleCameraPreference()" title="Default Camera (Click to switch Front / Rear)">
-                        <span>📷</span> <span id="camModeText">Front</span>
-                    </button>
                     <button class="btn-primary btn-header-action" style="background:rgba(255,255,255,0.08); border:1px solid var(--border);"
                         onclick="exportChat()" title="Export Chat History">📥 Export</button>
                 </div>
@@ -1537,8 +1532,6 @@
         function updateCamToggleUI() {
             const isFront = currentFacingMode === 'user';
             const modeText = isFront ? 'Front' : 'Rear';
-            const headerText = document.getElementById('camModeText');
-            if (headerText) headerText.innerText = modeText;
 
             const switchBtn = document.getElementById('switchCamBtn');
             if (switchBtn) {
@@ -1556,28 +1549,9 @@
             }
         }
 
-        async function toggleCameraPreference() {
-            if (localStream) {
-                await switchCamera();
-            } else {
-                currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-                localStorage.setItem('preferredFacingMode', currentFacingMode);
-                updateCamToggleUI();
-                addSystemMsg(`Camera set to ${currentFacingMode === 'user' ? 'Front' : 'Rear'} camera`);
-            }
-        }
-
         async function switchCamera() {
+            if (!localStream) return;
             const targetMode = currentFacingMode === 'user' ? 'environment' : 'user';
-
-            // If not currently in a call, just toggle preference
-            if (!localStream) {
-                currentFacingMode = targetMode;
-                localStorage.setItem('preferredFacingMode', currentFacingMode);
-                updateCamToggleUI();
-                addSystemMsg(`Camera set to ${currentFacingMode === 'user' ? 'Front' : 'Rear'} camera`);
-                return;
-            }
 
             const currentVideoTrack = localStream.getVideoTracks()[0];
             if (!currentVideoTrack) {
